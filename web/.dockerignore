@@ -1,0 +1,15 @@
+node_modules
+.next
+out
+coverage
+data
+*.db
+*.db-wal
+*.db-shm
+.env
+.env.*
+!.env.example
+Dockerfile
+.dockerignore
+npm-debug.log*
+README.md
