@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+/*
+ * Токены — черновые: палитра и типографика утверждаются арт-дирекшном
+ * (отдельная задача про дизайн) и заменяются здесь без правок в компонентах.
+ */
+@theme {
+  --color-paper: #f2ebdd;
+  --color-cream: #e4d8c3;
+  --color-ink: #221a15;
+  --color-espresso: #3b2a20;
+  --color-stamp: #b4452f;
+  --color-olive: #6f7459;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100dvh;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-stamp);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
