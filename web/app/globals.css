@@ -1,36 +1,220 @@
 @import "tailwindcss";
 
 /*
- * Токены — черновые: палитра и типографика утверждаются арт-дирекшном
- * (отдельная задача про дизайн) и заменяются здесь без правок в компонентах.
+ * Дизайн-токены «Печатный цех обжарки» — перенесены из artifacts/design/index.html
+ * без переименований. Шрифтовые переменные задаёт next/font (--font-literata /
+ * --font-manrope) в app/layout.tsx.
  */
 @theme {
-  --color-paper: #f2ebdd;
-  --color-cream: #e4d8c3;
-  --color-ink: #221a15;
-  --color-espresso: #3b2a20;
-  --color-stamp: #b4452f;
-  --color-olive: #6f7459;
+  --color-paper: #f2ebdd; /* основной фон: тёплая типографская бумага */
+  --color-cream: #e4d8c3; /* подложки, карточки, этикетки */
+  --color-ink: #221a15; /* основной текст, тонкие линии */
+  --color-espresso: #3b2a20; /* вторичный текст, глубокие блоки, липкая шапка */
+  --color-stamp: #b4452f; /* акцент: кнопки, штампы, крупные ссылки */
+  --color-stamp-deep: #9e3a25; /* мелкий красный текст: 4.83:1 на cream, 5.74:1 на paper */
+  --color-muted: #655547; /* мелкие подписи и подсказки: 5.06:1 на cream, 6.01:1 на paper */
+  --color-olive: #6f7459; /* вспомогательный акцент: крупные номера, декор */
+
+  --font-display: var(--font-literata), Georgia, "Times New Roman", serif;
+  --font-sans:
+    var(--font-manrope), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Скругления: последовательно во всём макете */
+  --radius-none: 0px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  /* Тени: липкая шапка и липкая кнопка */
+  --shadow-bar: 0 6px 20px color-mix(in srgb, var(--color-ink) 22%, transparent);
+  --shadow-lift: 0 6px 0 color-mix(in srgb, var(--color-ink) 18%, transparent);
 }
 
+/* ── База ──────────────────────────────────────────────────────────── */
 html {
+  scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
 }
 
 body {
   min-height: 100dvh;
+  overflow-x: hidden;
+  text-rendering: optimizeLegibility;
 }
 
+/* Курсор: у всего кликабельного — «рука», у недоступного — запрещающий */
+a,
+button,
+select,
+summary,
+label[for],
+input[type="radio"],
+input[type="checkbox"] {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled,
+input:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+/* ── Утилиты макета ────────────────────────────────────────────────── */
+
+/* Тонкое «зерно» бумаги: инлайновый SVG-шум, а не растровая картинка */
+.paper-grain {
+  position: relative;
+}
+
+.paper-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* «Залом» бумаги: мягкая диагональная складка тонкой тенью */
+.crease {
+  background-image:
+    linear-gradient(
+      112deg,
+      transparent 46%,
+      color-mix(in srgb, var(--color-ink) 4.5%, transparent) 49%,
+      transparent 52%
+    ),
+    linear-gradient(
+      74deg,
+      transparent 72%,
+      color-mix(in srgb, var(--color-ink) 3%, transparent) 75%,
+      transparent 78%
+    );
+}
+
+/* Видимый фокус для клавиатуры по всему сайту */
 :focus-visible {
+  outline: 2px solid var(--color-stamp);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Штамп-«печать»: полустёртая текстура через маску из того же SVG-шума */
+.stamp-mark {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0.6 0.6 0 0.55'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23m)'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0.6 0.6 0 0.55'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23m)'/%3E%3C/svg%3E");
+  -webkit-mask-mode: luminosity;
+  mask-mode: luminosity;
+}
+
+/* Перфорация по краю «талона» */
+.perforated {
+  background-image: radial-gradient(circle at 6px 50%, var(--color-paper) 3px, transparent 3.5px);
+  background-size: 12px 100%;
+  background-repeat: repeat-y;
+}
+
+/* Номер секции — контурная цифра (aria-hidden в разметке) */
+.section-num {
+  -webkit-text-stroke: 2px var(--color-olive);
+  color: transparent;
+  letter-spacing: -0.03em;
+}
+
+.section-num-dark {
+  -webkit-text-stroke-color: color-mix(in srgb, var(--color-paper) 55%, transparent);
+}
+
+/* Мягкое проявление при прокрутке (класс .reveal + IntersectionObserver) */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 0.35s ease,
+    transform 0.35s ease;
+}
+
+.reveal.is-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Наклон штампа */
+.tilt-r {
+  transform: rotate(6deg);
+}
+
+.tilt-l-s {
+  transform: rotate(-3.5deg);
+}
+
+/* Пунктирная линия-разделитель «как в типографии» */
+.rule-dotted {
+  height: 1px;
+  background-image: radial-gradient(circle, var(--color-ink) 1px, transparent 1.2px);
+  background-size: 7px 1px;
+  background-repeat: repeat-x;
+  opacity: 0.35;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Свитчер подписки: оформлен на скрытом чекбоксе, работает мышью и клавиатурой */
+.switch-track {
+  background-color: var(--color-paper);
+  border-color: color-mix(in srgb, var(--color-ink) 40%, transparent);
+}
+
+.switch-knob {
+  background-color: var(--color-ink);
+  transform: translateX(0.25rem);
+}
+
+.switch-input:checked ~ .switch-track {
+  background-color: var(--color-stamp);
+  border-color: var(--color-stamp);
+}
+
+.switch-input:checked ~ .switch-track .switch-knob {
+  background-color: var(--color-paper);
+  transform: translateX(1.5rem);
+}
+
+.switch-input:focus-visible ~ .switch-track {
   outline: 2px solid var(--color-stamp);
   outline-offset: 2px;
 }
 
+.switch-input:disabled ~ .switch-track {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Валидация: подсветка неверного поля мелким тёмно-красным токеном */
+[aria-invalid="true"] {
+  border-color: var(--color-stamp-deep);
+  box-shadow: inset 0 0 0 1px var(--color-stamp-deep);
+}
+
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
   }
 }
