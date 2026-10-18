@@ -40,10 +40,13 @@ docker compose exec web node scripts/backup-db.mjs --out /data/backup
 ### 1. База в Turso
 
 1. Зарегистрироваться на <https://turso.tech> (вход через GitHub).
-2. Create Database → имя `kvarta`, регион ближе к аудитории (Frankfurt /
-   `aws-eu-central-1`).
-3. Скопировать `libsql://…` и создать токен: `turso db tokens create kvarta`.
-4. Положить в локальный `.env` (файл в `.gitignore`, в репозиторий не попадает):
+2. Create Database → имя `kvarta`, регион **Sweden / Stockholm**
+   (`aws-eu-north-1`) — тот же город, где будет работать функция Vercel, поэтому
+   запросы к базе идут внутри одного дата-центра.
+3. Скопировать адрес базы (`libsql://kvarta-…turso.io`) и создать токен:
+   в панели базы — Create Token, либо `turso db tokens create kvarta`.
+4. Положить оба значения в локальный `.env` (файл в `.gitignore`, в репозиторий не
+   попадает):
 
 ```bash
 DATABASE_URL=libsql://kvarta-<аккаунт>.turso.io
@@ -56,11 +59,19 @@ DATABASE_AUTH_TOKEN=<токен>
 cd web && npm run db:migrate
 ```
 
+Регион базы задаётся при создании и потом не меняется: если понадобится другой —
+создаётся новая база, данные переносятся выгрузкой (см. «Откат»).
+
 ### 2. Проект в Vercel
 
 1. Import Git Repository → выбрать этот репозиторий.
 2. **Root Directory: `web`** (Next.js лежит в подкаталоге).
-3. Framework Preset: Next.js, Node 20.x или новее.
+3. Framework Preset: Next.js, Node 20.x или новее. Регион функций —
+   `arn1` (Стокгольм): он уже прописан в `web/vercel.json`, потому что там же
+   лежит база Turso. По умолчанию Vercel запускает функции в Вашингтоне (`iad1`),
+   и каждый запрос к базе ходил бы через Атлантику (~100 мс на круг). Если
+   регион базы другой, поправьте `regions` в `vercel.json` или задайте его в
+   Settings → Functions (на плане Hobby доступен только один регион).
 4. Build Command уже задан в `web/vercel.json` (`npm run db:migrate && npm run build`):
    схема применяется к Turso при каждом деплое. Если база на момент сборки
    недоступна, поменяйте Build Command в панели на `npm run build` — миграция
