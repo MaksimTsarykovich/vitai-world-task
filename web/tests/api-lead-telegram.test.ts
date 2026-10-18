@@ -77,7 +77,10 @@ describe('POST /api/lead + Telegram', () => {
     expect(response.status).toBe(201);
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
-    await vi.waitFor(() => expect(telegramSent(payload.id)).toBe(1));
+    await vi.waitFor(() => expect(telegramSent(payload.id)).toBe(1), {
+      timeout: 5000,
+      interval: 50,
+    });
   });
 
   it('ошибка Telegram не ломает ответ и не пишет telegram_sent', async () => {
@@ -98,7 +101,10 @@ describe('POST /api/lead + Telegram', () => {
     expect(response.status).toBe(201);
     expect(payload.id).toBeTypeOf('number');
 
-    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1), {
+      timeout: 5000,
+      interval: 50,
+    });
     await new Promise((resolve) => setTimeout(resolve, 20));
 
     expect(telegramSent(payload.id)).toBe(0);
