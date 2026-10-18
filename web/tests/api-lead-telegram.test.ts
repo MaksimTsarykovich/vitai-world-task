@@ -7,7 +7,7 @@ const dir = mkdtempSync(join(tmpdir(), 'kvarta-tg-api-'));
 const dbFile = join(dir, 'tg.db');
 
 // env читается при импорте route/db — задаём до динамического импорта.
-vi.stubEnv('DATABASE_PATH', dbFile);
+vi.stubEnv('DATABASE_URL', `file:${dbFile}`);
 vi.stubEnv('LEAD_RATE_LIMIT', '20');
 vi.stubEnv('TRUST_PROXY', '0');
 vi.stubEnv('TELEGRAM_BOT_TOKEN', 'test-token');
@@ -35,12 +35,15 @@ function request(body: unknown): Request {
   });
 }
 
-function telegramSent(id: number): number {
-  const row = getDb().prepare('SELECT telegram_sent FROM leads WHERE id = ?').get(id) as
-    | { telegram_sent: number }
-    | undefined;
+async function telegramSent(id: number): Promise<number> {
+  const db = await getDb();
+  const result = await db.execute({
+    sql: 'SELECT telegram_sent FROM leads WHERE id = ?',
+    args: [id],
+  });
+  const row = result.rows[0];
 
-  return row?.telegram_sent ?? -1;
+  return row ? Number(row.telegram_sent) : -1;
 }
 
 beforeEach(() => {
@@ -52,8 +55,8 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-afterAll(() => {
-  getDb().close();
+afterAll(async () => {
+  (await getDb()).close();
   rmSync(dir, { recursive: true, force: true });
   vi.unstubAllEnvs();
 });
@@ -77,7 +80,7 @@ describe('POST /api/lead + Telegram', () => {
     expect(response.status).toBe(201);
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
-    await vi.waitFor(() => expect(telegramSent(payload.id)).toBe(1), {
+    await vi.waitFor(async () => expect(await telegramSent(payload.id)).toBe(1), {
       timeout: 5000,
       interval: 50,
     });
@@ -107,7 +110,7 @@ describe('POST /api/lead + Telegram', () => {
     });
     await new Promise((resolve) => setTimeout(resolve, 20));
 
-    expect(telegramSent(payload.id)).toBe(0);
+    expect(await telegramSent(payload.id)).toBe(0);
     expect(errorSpy).toHaveBeenCalled();
   });
 });

@@ -11,8 +11,10 @@ const optionalString = z
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  // путь к файлу SQLite: локально ./data/kvarta.db, в Docker /data/kvarta.db
-  DATABASE_PATH: z.string().min(1).default('./data/kvarta.db'),
+  // URL базы: локально файл (file:./data/kvarta.db), на Vercel/Turso — libsql://…
+  DATABASE_URL: z.string().min(1).default('file:./data/kvarta.db'),
+  // токен Turso: необязательный, в логи не выводим
+  DATABASE_AUTH_TOKEN: optionalString,
   // публичный адрес сайта: canonical, OG, sitemap. На деплое задаётся обязательно.
   SITE_URL: z.string().url().optional(),
   PORT: z.coerce.number().int().positive().default(3000),

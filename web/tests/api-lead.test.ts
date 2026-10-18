@@ -6,7 +6,7 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 const dir = mkdtempSync(join(tmpdir(), 'kvarta-api-'));
 const dbFile = join(dir, 'api.db');
 
-process.env.DATABASE_PATH = dbFile;
+process.env.DATABASE_URL = `file:${dbFile}`;
 process.env.LEAD_RATE_LIMIT = '20';
 process.env.TRUST_PROXY = '0';
 
@@ -62,8 +62,8 @@ beforeEach(() => {
   resetLeadRateLimit();
 });
 
-afterAll(() => {
-  getDb().close();
+afterAll(async () => {
+  (await getDb()).close();
   rmSync(dir, { recursive: true, force: true });
 });
 
@@ -142,8 +142,8 @@ describe('POST /api/lead', () => {
   });
 
   it('500 при ошибке БД, с requestId и без деталей', async () => {
-    const db = getDb();
-    db.exec('ALTER TABLE leads RENAME TO leads_broken');
+    const db = await getDb();
+    await db.execute('ALTER TABLE leads RENAME TO leads_broken');
 
     try {
       const response = await POST(request({ ...validLead, phone: phoneWith(3) }));
@@ -154,7 +154,7 @@ describe('POST /api/lead', () => {
       expect(typeof payload.requestId).toBe('string');
       expect(JSON.stringify(payload)).not.toMatch(/SQL|leads_broken|stack/i);
     } finally {
-      db.exec('ALTER TABLE leads_broken RENAME TO leads');
+      await db.execute('ALTER TABLE leads_broken RENAME TO leads');
     }
   });
 
@@ -182,14 +182,24 @@ describe('POST /api/lead', () => {
 
     expect(response.status).toBe(201);
 
-    const row = getDb()
-      .prepare(
-        `SELECT order_items, subscription, utm_source, click_id_type, click_id, referrer, user_agent
-         FROM leads WHERE phone = ?`,
-      )
-      .get(phone.replace(/\D/g, '').replace(/^375/, '+375')) as Record<string, unknown>;
+    const rows = await (
+      await getDb()
+    ).execute({
+      sql: `SELECT order_items, subscription, utm_source, click_id_type, click_id, referrer, user_agent
+            FROM leads WHERE phone = ?`,
+      args: [phone.replace(/\D/g, '').replace(/^375/, '+375')],
+    });
+    const row = rows.rows[0];
 
-    expect(row).toEqual({
+    expect({
+      order_items: row.order_items,
+      subscription: row.subscription,
+      utm_source: row.utm_source,
+      click_id_type: row.click_id_type,
+      click_id: row.click_id,
+      referrer: row.referrer,
+      user_agent: row.user_agent,
+    }).toEqual({
       order_items: '[{"slug":"ethiopia","qty":2},{"slug":"colombia","qty":1}]',
       subscription: 1,
       utm_source: 'yandex',

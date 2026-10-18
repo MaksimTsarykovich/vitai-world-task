@@ -149,8 +149,9 @@ export async function POST(request: Request) {
     phoneForLog = lead.phone;
 
     const attribution = resolveAttribution(lead, request);
+    const db = await getDb();
 
-    const saved = saveLead(getDb(), {
+    const saved = await saveLead(db, {
       requestId,
       name: lead.name,
       phone: lead.phone,
@@ -179,7 +180,7 @@ export async function POST(request: Request) {
         attribution,
       });
 
-      if (sent) markTelegramSent(getDb(), saved.id);
+      if (sent) await markTelegramSent(db, saved.id);
     });
 
     return respond(201, { status: 'ok', id: saved.id, requestId });

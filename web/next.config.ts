@@ -3,8 +3,8 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   // standalone-сборка нужна для минимального production-образа (см. web/Dockerfile)
   output: 'standalone',
-  // нативный модуль: не бандлим, подключаем как внешний пакет
-  serverExternalPackages: ['better-sqlite3'],
+  // сетевой/нативный драйвер: не бандлим, подключаем как внешний пакет
+  serverExternalPackages: ['@libsql/client', 'libsql'],
   reactStrictMode: true,
   images: {
     // avif отдаётся браузерам с Accept: image/avif (Chrome/Lighthouse), webp — остальным

@@ -1,107 +1,69 @@
-import Database from 'better-sqlite3';
+import { createClient, type Client } from '@libsql/client';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { env } from '@/lib/env';
+import { SCHEMA_SQL, SCHEMA_VERSION, applyMigrations } from '@/lib/schema.mjs';
 
-export const SCHEMA_VERSION = 2;
+export { SCHEMA_SQL, SCHEMA_VERSION };
 
-/*
- * Полная схема для чистой базы. На существующей базе v1 недостающие колонки
- * добавляются миграцией ниже через ALTER TABLE — данные не теряются.
- */
-export const SCHEMA_SQL = `
-CREATE TABLE IF NOT EXISTS leads (
-  id             INTEGER PRIMARY KEY AUTOINCREMENT,
-  created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
-  request_id     TEXT NOT NULL,
-  name           TEXT NOT NULL,
-  phone          TEXT NOT NULL,
-  interest       TEXT NOT NULL CHECK (interest IN ('subscription','order','question')),
-  comment        TEXT,
-  order_items    TEXT,
-  subscription   INTEGER NOT NULL DEFAULT 0,
-  utm_source     TEXT,
-  utm_medium     TEXT,
-  utm_campaign   TEXT,
-  utm_content    TEXT,
-  utm_term       TEXT,
-  click_id_type  TEXT,
-  click_id       TEXT,
-  referrer       TEXT,
-  landing_path   TEXT,
-  page_url       TEXT,
-  user_agent     TEXT,
-  telegram_sent  INTEGER NOT NULL DEFAULT 0
-);
+export type Db = Client;
 
-CREATE INDEX IF NOT EXISTS idx_leads_phone_created ON leads (phone, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_leads_created ON leads (created_at DESC);
-`;
+/** Для file:-URL создаём каталог локального файла заранее. */
+function localFilePath(url: string): string | null {
+  if (!url.startsWith('file:')) return null;
 
-const LEAD_COLUMNS_V2: Array<{ name: string; ddl: string }> = [
-  { name: 'order_items', ddl: 'ALTER TABLE leads ADD COLUMN order_items TEXT' },
-  {
-    name: 'subscription',
-    ddl: 'ALTER TABLE leads ADD COLUMN subscription INTEGER NOT NULL DEFAULT 0',
-  },
-];
+  const rest = url.slice('file:'.length).split('?')[0];
+  if (rest === '' || rest.startsWith(':')) return null; // file::memory: и т.п.
 
-function leadColumns(db: Database.Database): Set<string> {
-  const rows = db.prepare('PRAGMA table_info(leads)').all() as Array<{ name: string }>;
-  return new Set(rows.map((row) => row.name));
+  return rest;
 }
 
-/**
- * Идемпотентная миграция: создаёт полную таблицу для чистой базы, а на базе v1
- * добавляет только недостающие колонки и выставляет user_version = 2.
- */
-function migrate(db: Database.Database): void {
-  db.exec(SCHEMA_SQL);
+/** Клиент libSQL. url — file:… локально или libsql://…/https://… для Turso. */
+export function createDbClient(url: string, authToken?: string): Db {
+  const path = localFilePath(url);
+  if (path) mkdirSync(dirname(path), { recursive: true });
 
-  const columns = leadColumns(db);
-
-  for (const column of LEAD_COLUMNS_V2) {
-    if (!columns.has(column.name)) {
-      db.exec(column.ddl);
-    }
-  }
-
-  db.exec(SCHEMA_SQL);
-  db.pragma(`user_version = ${SCHEMA_VERSION}`);
+  return createClient({ url, authToken });
 }
 
-export type Db = Database.Database;
-
-// Открывает (при необходимости создаёт) файл БД, включает WAL и применяет схему.
-export function openDatabase(path: string): Db {
-  mkdirSync(dirname(path), { recursive: true });
-
-  const db = new Database(path);
-  db.pragma('journal_mode = WAL');
-  db.pragma('busy_timeout = 5000');
-  db.pragma('synchronous = NORMAL');
-  db.pragma('foreign_keys = ON');
-
-  const apply = db.transaction(() => migrate(db));
-  apply();
+/** Открывает (при необходимости создаёт) базу и применяет идемпотентную схему. */
+export async function openDatabase(url: string, authToken?: string): Promise<Db> {
+  const db = createDbClient(url, authToken);
+  await applyMigrations(db);
 
   return db;
 }
 
-const globalForDb = globalThis as unknown as { __kvartaDb?: Db };
+const globalForDb = globalThis as unknown as { __kvartaDbPromise?: Promise<Db> };
 
-export function getDb(): Db {
-  if (!globalForDb.__kvartaDb) {
-    globalForDb.__kvartaDb = openDatabase(env.DATABASE_PATH);
-  }
+/**
+ * Синглтон на процесс: один клиент libSQL на все запросы. Если подключение
+ * упало (например, Turso недоступен на холодном старте), отказ НЕ кэшируется —
+ * следующий запрос попробует подключиться снова, а не будет отдавать 500 до
+ * перезапуска процесса.
+ */
+export function getDb(): Promise<Db> {
+  if (globalForDb.__kvartaDbPromise) return globalForDb.__kvartaDbPromise;
 
-  return globalForDb.__kvartaDb;
+  const pending = openDatabase(env.DATABASE_URL, env.DATABASE_AUTH_TOKEN).catch(
+    (error: unknown) => {
+      globalForDb.__kvartaDbPromise = undefined;
+      throw error;
+    },
+  );
+
+  globalForDb.__kvartaDbPromise = pending;
+
+  return pending;
 }
 
-export function dbStatus(): { ok: boolean; schemaVersion: number } {
-  const db = getDb();
-  const row = db.prepare('SELECT 1 AS ok').get() as { ok: number } | undefined;
-  const schemaVersion = Number(db.pragma('user_version', { simple: true }));
+export async function dbStatus(): Promise<{ ok: boolean; schemaVersion: number }> {
+  const db = await getDb();
+  const probe = await db.execute('SELECT 1 AS ok');
+  const version = await db.execute('PRAGMA user_version');
 
-  return { ok: row?.ok === 1, schemaVersion };
+  return {
+    ok: Number(probe.rows[0]?.ok) === 1,
+    schemaVersion: Number(version.rows[0]?.user_version ?? 0),
+  };
 }
