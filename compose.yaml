@@ -14,7 +14,10 @@ services:
       - "3000:3000"
     environment:
       NODE_ENV: production
-      DATABASE_URL: ${DATABASE_URL:-file:/data/kvarta.db}
+      # Версия для VPS всегда пишет в том /data. Turso здесь не подставляется
+      # автоматически: docker compose читает .env проекта, и путь к базе Vercel
+      # молча уводил бы контейнер в облако. Нужен Turso — поменяйте строку явно.
+      DATABASE_URL: file:/data/kvarta.db
       DATABASE_AUTH_TOKEN: ${DATABASE_AUTH_TOKEN:-}
       PORT: "3000"
       HOSTNAME: 0.0.0.0
