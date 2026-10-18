@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Smoke-проверка приёма заявок: 10 параллельных POST на живой сервер.
- * Ожидаем ровно одну новую строку в SQLite: 1 × 201 и 9 × 200 duplicate.
+ * Ожидаем ровно одну новую строку в базе: 1 × 201 и 9 × 200 duplicate.
  *
  * Запуск из корня репозитория (сервер поднят через docker compose):
  *   node web/scripts/smoke-lead.mjs
@@ -9,11 +9,12 @@
  * Переменные:
  *   SMOKE_BASE_URL — адрес сервера, по умолчанию http://localhost:3000
  *   SMOKE_DB_CHECK=0 — не проверять строку в базе (если нет доступа к Docker)
+ *   DATABASE_URL / DATABASE_AUTH_TOKEN — база для проверки последней заявки.
  */
 import { execFileSync } from 'node:child_process';
-import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createClient } from '@libsql/client';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const baseUrl = process.env.SMOKE_BASE_URL ?? process.env.BASE_URL ?? 'http://localhost:3000';
@@ -21,6 +22,9 @@ const baseUrl = process.env.SMOKE_BASE_URL ?? process.env.BASE_URL ?? 'http://lo
 const local = `29${String(Date.now() % 10_000_000).padStart(7, '0')}`;
 const phone = `+375${local}`;
 const prettyPhone = `+375 ${local.slice(0, 2)} ${local.slice(2, 5)}-${local.slice(5, 7)}-${local.slice(7)}`;
+
+const SELECT_ROW = `SELECT count(*) AS n, sum(subscription) AS subscribed,
+  max(order_items) AS orderItems, max(utm_source) AS utmSource FROM leads WHERE phone = ?`;
 
 const payload = {
   name: 'Smoke Test',
@@ -46,37 +50,51 @@ function fail(message) {
   process.exit(1);
 }
 
-function countRows() {
+/** Читает строку заявки из базы внутри контейнера (через libSQL). */
+function dockerRow() {
   const script = `
-    const Database = require('better-sqlite3');
-    const db = new Database(process.env.DATABASE_PATH || '/data/kvarta.db', { readonly: true });
-    const row = db.prepare(
-      'SELECT count(*) AS n, sum(subscription) AS subscribed, max(order_items) AS orderItems, max(utm_source) AS utmSource FROM leads WHERE phone = ?'
-    ).get(${JSON.stringify(phone)});
-    console.log(JSON.stringify(row));
-    db.close();
+    const { createClient } = require('@libsql/client');
+    (async () => {
+      const db = createClient({
+        url: process.env.DATABASE_URL,
+        authToken: process.env.DATABASE_AUTH_TOKEN || undefined,
+      });
+      const res = await db.execute({ sql: ${JSON.stringify(SELECT_ROW)}, args: [${JSON.stringify(phone)}] });
+      const r = res.rows[0];
+      console.log(JSON.stringify({ n: r.n, subscribed: r.subscribed, orderItems: r.orderItems, utmSource: r.utmSource }));
+      db.close();
+    })().catch((error) => { console.error(error.message); process.exit(1); });
   `;
 
-  try {
-    const out = execFileSync('docker', ['compose', 'exec', '-T', 'web', 'node', '-e', script], {
-      cwd: repoRoot,
-      encoding: 'utf8',
-    });
+  const out = execFileSync('docker', ['compose', 'exec', '-T', 'web', 'node', '-e', script], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
 
-    return JSON.parse(out.trim().split('\n').at(-1));
+  return JSON.parse(out.trim().split('\n').at(-1));
+}
+
+/** Локальный фолбэк, если Docker недоступен. */
+async function localRow() {
+  const url = process.env.DATABASE_URL ?? `file:${resolve(repoRoot, 'web', 'data', 'kvarta.db')}`;
+  const db = createClient({ url, authToken: process.env.DATABASE_AUTH_TOKEN || undefined });
+
+  try {
+    const res = await db.execute({ sql: SELECT_ROW, args: [phone] });
+    const r = res.rows[0];
+
+    return { n: r.n, subscribed: r.subscribed, orderItems: r.orderItems, utmSource: r.utmSource };
+  } finally {
+    db.close();
+  }
+}
+
+async function countRows() {
+  try {
+    return dockerRow();
   } catch (dockerError) {
     try {
-      const require = createRequire(resolve(repoRoot, 'web', 'package.json'));
-      const Database = require('better-sqlite3');
-      const dbPath = process.env.DATABASE_PATH ?? resolve(repoRoot, 'web', 'data', 'kvarta.db');
-      const db = new Database(dbPath, { readonly: true });
-      const row = db
-        .prepare(
-          'SELECT count(*) AS n, sum(subscription) AS subscribed, max(order_items) AS orderItems, max(utm_source) AS utmSource FROM leads WHERE phone = ?',
-        )
-        .get(phone);
-      db.close();
-      return row;
+      return await localRow();
     } catch {
       throw dockerError;
     }
@@ -111,7 +129,7 @@ if (process.env.SMOKE_DB_CHECK === '0') {
   process.exit(0);
 }
 
-const row = countRows();
+const row = await countRows();
 
 if (row.n !== 1) {
   fail(`в базе ${row.n} строк для ${phone}, ожидали 1`);

@@ -1,20 +1,18 @@
 #!/usr/bin/env node
 /**
- * Выгрузка заявок из SQLite для менеджера.
+ * Выгрузка заявок из базы для менеджера.
  *
  *   node scripts/export-leads.mjs                        # CSV в stdout
  *   node scripts/export-leads.mjs --format json
  *   node scripts/export-leads.mjs --out /data/leads.csv
  *   docker compose exec web node scripts/export-leads.mjs --format csv
  *
- * База берётся из DATABASE_PATH (в Docker это /data/kvarta.db).
+ * База: DATABASE_URL (file:… локально / libsql://… для Turso), токен —
+ * DATABASE_AUTH_TOKEN.
  */
 import { writeFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
-
-const require = createRequire(import.meta.url);
-const Database = require('better-sqlite3');
+import { createClient } from '@libsql/client';
 
 const COLUMNS = [
   'id',
@@ -37,7 +35,7 @@ const COLUMNS = [
   'telegram_sent',
 ];
 
-const USAGE = `Выгрузка заявок из SQLite.
+const USAGE = `Выгрузка заявок из базы.
 
 Использование:
   node scripts/export-leads.mjs [--format csv|json] [--out <путь>]
@@ -47,7 +45,7 @@ const USAGE = `Выгрузка заявок из SQLite.
   --out <путь>        записать в файл вместо stdout
   -h, --help          эта справка
 
-База: DATABASE_PATH (по умолчанию /data/kvarta.db).`;
+База: DATABASE_URL (по умолчанию file:/data/kvarta.db).`;
 
 function fail(message) {
   console.error(`✖ ${message}`);
@@ -94,6 +92,10 @@ function csvCell(value) {
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
+function toPlain(row) {
+  return Object.fromEntries(COLUMNS.map((column) => [column, row[column] ?? null]));
+}
+
 function toCsv(rows) {
   const lines = [COLUMNS.join(',')];
 
@@ -106,7 +108,7 @@ function toCsv(rows) {
 
 function toJson(rows) {
   const parsed = rows.map((row) => {
-    if (row.order_items === null) return { ...row, order_items: null };
+    if (row.order_items === null) return row;
 
     try {
       return { ...row, order_items: JSON.parse(row.order_items) };
@@ -118,30 +120,21 @@ function toJson(rows) {
   return `${JSON.stringify(parsed, null, 2)}\n`;
 }
 
-function main() {
+async function main() {
   const options = parseArgs(process.argv.slice(2));
-  const dbPath = process.env.DATABASE_PATH || '/data/kvarta.db';
-  let db;
-
-  try {
-    db = new Database(dbPath, { readonly: true, fileMustExist: true });
-  } catch (error) {
-    fail(
-      `не удалось открыть базу ${resolve(dbPath)}: ${
-        error instanceof Error ? error.message : 'unknown'
-      }`,
-    );
-  }
+  const url = process.env.DATABASE_URL || 'file:/data/kvarta.db';
+  const db = createClient({ url, authToken: process.env.DATABASE_AUTH_TOKEN || undefined });
 
   let rows;
 
   try {
-    rows = db.prepare(`SELECT ${COLUMNS.join(', ')} FROM leads ORDER BY created_at ASC, id ASC`).all();
+    const result = await db.execute(
+      `SELECT ${COLUMNS.join(', ')} FROM leads ORDER BY created_at ASC, id ASC`,
+    );
+    rows = result.rows.map(toPlain);
   } catch (error) {
     db.close();
-    fail(
-      `не удалось прочитать заявки: ${error instanceof Error ? error.message : 'unknown'}`,
-    );
+    fail(`не удалось прочитать заявки: ${error instanceof Error ? error.message : 'unknown'}`);
   }
 
   db.close();
@@ -158,4 +151,4 @@ function main() {
   console.error(`✓ Выгружено заявок: ${rows.length}`);
 }
 
-main();
+await main();

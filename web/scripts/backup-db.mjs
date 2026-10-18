@@ -1,21 +1,34 @@
 #!/usr/bin/env node
 /**
- * Консистентная копия базы SQLite через better-sqlite3 `.backup()`.
+ * Резервная копия базы.
  *
  *   node scripts/backup-db.mjs
+ *   node scripts/backup-db.mjs --out /data/backups/kvarta.db
  *   docker compose exec web node scripts/backup-db.mjs
  *   docker compose exec web ls -la /data/backups
  *
- * Источник: DATABASE_PATH (в Docker /data/kvarta.db).
- * Назначение: BACKUP_DIR (по умолчанию /data/backups), файл
- * kvarta-YYYYMMDD-HHMMSS.db. Каталог создаётся автоматически.
+ * Источник: DATABASE_URL (file:… или libsql://…).
+ *  - file:…   — консистентная бинарная копия через `VACUUM INTO`.
+ *  - libsql:// — логический дамп (схема + INSERT-ы) в .sql.
+ *
+ * Назначение: --out <путь>, иначе BACKUP_DIR (по умолчанию /data/backups) и
+ * kvarta-YYYYMMDD-HHMMSS.<db|sql>. Каталог создаётся автоматически.
  */
-import { mkdirSync } from 'node:fs';
-import { createRequire } from 'node:module';
-import { join, resolve } from 'node:path';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { createClient } from '@libsql/client';
 
-const require = createRequire(import.meta.url);
-const Database = require('better-sqlite3');
+const USAGE = `Резервная копия базы.
+
+Использование:
+  node scripts/backup-db.mjs [--out <путь>] [--dump]
+
+Флаги:
+  --out <путь>   куда положить копию (по умолчанию /data/backups/kvarta-….db)
+  --dump         принудительно логический дамп (.sql) даже для file:-базы
+  -h, --help     эта справка
+
+База: DATABASE_URL (file:… копируется через VACUUM INTO, libsql://… — дамп в .sql).`;
 
 function pad(value) {
   return String(value).padStart(2, '0');
@@ -33,30 +46,106 @@ function fail(message) {
   process.exit(1);
 }
 
-const dbPath = process.env.DATABASE_PATH || '/data/kvarta.db';
-const backupDir = process.env.BACKUP_DIR || '/data/backups';
-const destination = join(backupDir, `kvarta-${timestamp()}.db`);
+function parseArgs(argv) {
+  const options = { out: null, dump: false };
 
-mkdirSync(backupDir, { recursive: true });
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
 
-let db;
+    if (arg === '-h' || arg === '--help') {
+      console.log(USAGE);
+      process.exit(0);
+    }
 
-try {
-  db = new Database(dbPath, { readonly: true, fileMustExist: true });
-} catch (error) {
-  fail(
-    `не удалось открыть базу ${resolve(dbPath)}: ${
-      error instanceof Error ? error.message : 'unknown'
-    }`,
+    if (arg === '--dump') {
+      options.dump = true;
+      continue;
+    }
+
+    if (arg === '--out') {
+      const value = argv[i + 1];
+      if (!value) fail('--out требует путь к файлу');
+      options.out = value;
+      i += 1;
+      continue;
+    }
+
+    fail(`неизвестный аргумент: ${arg}`);
+  }
+
+  return options;
+}
+
+function sqlLiteral(value) {
+  if (value === null || value === undefined) return 'NULL';
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'bigint') return value.toString();
+
+  return `'${String(value).replace(/'/g, "''")}'`;
+}
+
+/** Логический дамп для сетевой базы: схема + данные в виде INSERT-ов. */
+async function logicalDump(db) {
+  const schema = await db.execute(
+    `SELECT type, name, sql FROM sqlite_master
+     WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%'
+     ORDER BY CASE type WHEN 'table' THEN 0 WHEN 'index' THEN 1 ELSE 2 END, name`,
   );
+  const columns = await db.execute('PRAGMA table_info(leads)');
+  const names = columns.rows.map((row) => String(row.name));
+  const data = await db.execute(`SELECT ${names.join(', ')} FROM leads ORDER BY id`);
+
+  let version = 0;
+
+  try {
+    const result = await db.execute('PRAGMA user_version');
+    version = Number(result.rows[0]?.user_version ?? 0);
+  } catch {
+    // На некоторых прокси PRAGMA user_version недоступен — версия не критична.
+  }
+
+  const lines = ['-- Логический дамп Kvarta', `PRAGMA user_version = ${version};`, ''];
+
+  for (const row of schema.rows) {
+    lines.push(`${String(row.sql).trim()};`);
+  }
+
+  lines.push('');
+
+  for (const row of data.rows) {
+    const values = names.map((name) => sqlLiteral(row[name]));
+    lines.push(`INSERT INTO leads (${names.join(', ')}) VALUES (${values.join(', ')});`);
+  }
+
+  return `${lines.join('\n')}\n`;
 }
 
-try {
-  await db.backup(destination);
-} catch (error) {
-  fail(`бэкап не создан: ${error instanceof Error ? error.message : 'unknown'}`);
-} finally {
-  db.close();
+async function main() {
+  const options = parseArgs(process.argv.slice(2));
+  const url = process.env.DATABASE_URL || 'file:/data/kvarta.db';
+  const useDump = options.dump || !url.startsWith('file:');
+  const extension = useDump ? 'sql' : 'db';
+  const destination = resolve(
+    options.out ?? join(process.env.BACKUP_DIR || '/data/backups', `kvarta-${timestamp()}.${extension}`),
+  );
+
+  mkdirSync(dirname(destination), { recursive: true });
+
+  const db = createClient({ url, authToken: process.env.DATABASE_AUTH_TOKEN || undefined });
+
+  try {
+    if (useDump) {
+      writeFileSync(destination, await logicalDump(db), 'utf8');
+    } else {
+      await db.execute({ sql: 'VACUUM INTO ?', args: [destination] });
+    }
+  } catch (error) {
+    fail(`бэкап не создан: ${error instanceof Error ? error.message : 'unknown'}`);
+  } finally {
+    db.close();
+  }
+
+  console.log(`✓ Бэкап создан: ${destination}`);
 }
 
-console.log(`✓ Бэкап создан: ${destination}`);
+await main();
