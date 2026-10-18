@@ -2,7 +2,13 @@ import { createClient, type Client } from '@libsql/client';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { env } from '@/lib/env';
-import { SCHEMA_SQL, SCHEMA_VERSION, applyMigrations, readSchemaVersion } from '@/lib/schema.mjs';
+import {
+  SCHEMA_SQL,
+  SCHEMA_VERSION,
+  applyMigrations,
+  normalizeDatabaseUrl,
+  readSchemaVersion,
+} from '@/lib/schema.mjs';
 
 export { SCHEMA_SQL, SCHEMA_VERSION, readSchemaVersion };
 
@@ -18,12 +24,32 @@ function localFilePath(url: string): string | null {
   return rest;
 }
 
-/** Клиент libSQL. url — file:… локально или libsql://…/https://… для Turso. */
+// Предупреждение про «путь без схемы» — один раз на процесс.
+let warnedAboutUrlScheme = false;
+
+/**
+ * Клиент libSQL. url — file:… локально или libsql://…/https://… для Turso.
+ * Значение без схемы нормализуется в file:-URL, чтобы не падать с URL_INVALID
+ * (например, если в переменных Vercel лежит '/data/kvarta.db').
+ */
 export function createDbClient(url: string, authToken?: string): Db {
-  const path = localFilePath(url);
+  const resolved = normalizeDatabaseUrl(url);
+
+  if (resolved.kind === 'missing') {
+    throw new Error(
+      'DATABASE_URL не задан — укажите "file:/путь" или "libsql://хост" (+ DATABASE_AUTH_TOKEN)',
+    );
+  }
+
+  if (resolved.normalized && !warnedAboutUrlScheme) {
+    warnedAboutUrlScheme = true;
+    console.warn(`⚠ DATABASE_URL без схемы — использую ${resolved.url}`);
+  }
+
+  const path = localFilePath(resolved.url);
   if (path) mkdirSync(dirname(path), { recursive: true });
 
-  return createClient({ url, authToken });
+  return createClient({ url: resolved.url, authToken });
 }
 
 /** Открывает (при необходимости создаёт) базу и применяет идемпотентную схему. */
