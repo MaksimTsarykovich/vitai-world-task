@@ -8,18 +8,15 @@ import OrderTable, { type OrderItem } from '@/components/form/OrderTable';
 import { cn } from '@/lib/cn';
 import { MAX_QUANTITY, findProduct, products } from '@/lib/products';
 import { onOrderIntent } from '@/lib/order-intent';
-import { isValidByPhone, submitLead, type LeadInterest, type LeadPayload } from '@/lib/lead-client';
+import { submitLead, type LeadInterest, type LeadPayload } from '@/lib/lead-client';
+import { formatLeadFieldErrors, leadRequestSchema } from '@/lib/lead-schema';
 import { site, subscriptionLabel } from '@/lib/site';
 
 type Interest = '' | LeadInterest;
 
-type Errors = {
-  name?: boolean;
-  phone?: boolean;
-  interest?: boolean;
-  sort?: boolean;
-  comment?: boolean;
-};
+type Errors = Record<string, string | undefined>;
+
+const FIELD_FOCUS_ORDER = ['name', 'phone', 'interest', 'items', 'comment'] as const;
 
 type Status = {
   kind: 'success' | 'duplicate' | 'error';
@@ -99,11 +96,48 @@ export default function LeadForm() {
       setItems([]);
       setSubscription(false);
       setSortSlug('');
-      setErrors((current) => ({ ...current, sort: false }));
+      setErrors((current) => ({ ...current, items: undefined }));
     }
 
     if (next !== 'question') {
-      setErrors((current) => ({ ...current, comment: false }));
+      setErrors((current) => ({ ...current, comment: undefined }));
+    }
+  }
+
+  function focusFirstError(fields: Record<string, string | undefined>) {
+    const first = FIELD_FOCUS_ORDER.find((field) => Boolean(fields[field]));
+
+    const refs: Partial<Record<(typeof FIELD_FOCUS_ORDER)[number], HTMLElement | null>> = {
+      name: nameRef.current,
+      phone: phoneRef.current,
+      interest: interestRef.current,
+      items: sortRef.current,
+      comment: commentRef.current,
+    };
+
+    if (first) {
+      refs[first]?.focus();
+      return;
+    }
+
+    if (fields.subscription) {
+      document.getElementById('subscription-switch')?.focus();
+      return;
+    }
+
+    formRef.current?.focus();
+  }
+
+  function applyFieldErrors(fields: Record<string, string>) {
+    setErrors(fields);
+    focusFirstError(fields);
+
+    if (Object.keys(fields).length === 0 || fields.form) {
+      setStatus({
+        kind: 'error',
+        title: 'Проверьте данные',
+        text: fields.form ?? 'Не удалось проверить заявку. Попробуйте ещё раз.',
+      });
     }
   }
 
@@ -134,6 +168,29 @@ export default function LeadForm() {
         return;
       }
 
+      if (result.kind === 'validation') {
+        applyFieldErrors(result.fields);
+        return;
+      }
+
+      if (result.kind === 'rate-limit') {
+        setStatus({
+          kind: 'error',
+          title: 'Слишком много попыток, позвоните нам',
+          text: 'Подождите минуту и попробуйте снова или позвоните нам — данные формы сохранены.',
+        });
+        return;
+      }
+
+      if (result.kind === 'error') {
+        setStatus({
+          kind: 'error',
+          title: 'Не удалось отправить заявку',
+          text: 'Проверьте связь и попробуйте ещё раз. Введённые данные сохранены.',
+        });
+        return;
+      }
+
       setStatus({
         kind: 'success',
         title: 'Заявка принята — перезвоним',
@@ -156,45 +213,37 @@ export default function LeadForm() {
     event.preventDefault();
     if (sending) return;
 
-    const trimmedName = name.trim();
-    const trimmedComment = comment.trim();
-    const nextErrors: Errors = {};
+    // Сорт из селекта тоже попадает в заявку, даже если его не добавили в таблицу.
+    const orderItems = [...items];
+    if (sortSlug !== '' && !orderItems.some((item) => item.slug === sortSlug)) {
+      orderItems.push({ slug: sortSlug, qty: 1 });
+    }
 
-    if (trimmedName === '') nextErrors.name = true;
-    if (!isValidByPhone(phone)) nextErrors.phone = true;
-    if (interest === '') nextErrors.interest = true;
-    if (interest === 'order' && sortSlug === '' && items.length === 0) nextErrors.sort = true;
-    if (interest === 'question' && trimmedComment === '') nextErrors.comment = true;
+    const parsed = leadRequestSchema.safeParse({
+      name,
+      phone,
+      interest,
+      comment,
+      subscription: isOrder ? subscription : false,
+      items: isOrder ? orderItems : [],
+    });
 
-    setErrors(nextErrors);
     setStatus(null);
 
-    if (Object.keys(nextErrors).length > 0) {
-      const candidates: Array<HTMLElement | null> = [
-        nextErrors.name ? nameRef.current : null,
-        nextErrors.phone ? phoneRef.current : null,
-        nextErrors.interest ? interestRef.current : null,
-        nextErrors.sort ? sortRef.current : null,
-        nextErrors.comment ? commentRef.current : null,
-      ];
-
-      candidates.find((element) => element !== null)?.focus();
+    if (!parsed.success) {
+      applyFieldErrors(formatLeadFieldErrors(parsed.error));
       return;
     }
 
-    // Сорт из селекта тоже попадает в заявку, даже если его не добавили в таблицу.
-    const sorts = [...items];
-    if (sortSlug !== '' && !sorts.some((item) => item.slug === sortSlug)) {
-      sorts.push({ slug: sortSlug, qty: 1 });
-    }
+    setErrors({});
 
     await send({
-      name: trimmedName,
-      phone,
-      interest: interest as LeadInterest,
-      comment: trimmedComment,
-      sorts,
-      subscription: isOrder ? subscription : false,
+      name: parsed.data.name,
+      phone: parsed.data.phone,
+      interest: parsed.data.interest,
+      comment: parsed.data.comment,
+      items: parsed.data.items,
+      subscription: parsed.data.subscription,
     });
   }
 
@@ -213,6 +262,7 @@ export default function LeadForm() {
     <form
       ref={formRef}
       noValidate
+      tabIndex={-1}
       onSubmit={handleSubmit}
       className="bg-cream text-ink border border-ink/25 rounded-lg p-5 sm:p-8 max-[359px]:-mx-4 max-[359px]:rounded-none max-[359px]:p-4"
     >
@@ -232,15 +282,16 @@ export default function LeadForm() {
             name="name"
             autoComplete="name"
             required
+            maxLength={80}
             placeholder="Аня"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            aria-invalid={errors.name || undefined}
+            aria-invalid={Boolean(errors.name) || undefined}
             aria-describedby="name-error"
             className={fieldClass}
           />
           <p id="name-error" role="alert" hidden={!errors.name} className={errorClass}>
-            Напишите, как к вам обращаться.
+            {errors.name ?? 'Укажите имя (2–80 символов)'}
           </p>
         </div>
 
@@ -263,7 +314,7 @@ export default function LeadForm() {
             placeholder="+375 29 123-45-67"
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
-            aria-invalid={errors.phone || undefined}
+            aria-invalid={Boolean(errors.phone) || undefined}
             aria-describedby="phone-hint phone-error"
             className={fieldClass}
           />
@@ -271,7 +322,7 @@ export default function LeadForm() {
             Белорусский номер — по нему перезвоним.
           </p>
           <p id="phone-error" role="alert" hidden={!errors.phone} className={errorClass}>
-            Введите белорусский номер: +375 29 123-45-67
+            {errors.phone ?? 'Введите белорусский номер: +375 29 123-45-67'}
           </p>
         </div>
 
@@ -291,7 +342,7 @@ export default function LeadForm() {
             required
           />
           <p id="interest-error" role="alert" hidden={!errors.interest} className={errorClass}>
-            Выберите, что интересует.
+            {errors.interest ?? 'Выберите, что интересует'}
           </p>
         </div>
 
@@ -320,7 +371,7 @@ export default function LeadForm() {
                 required={isOrder}
                 value={sortSlug}
                 onChange={(event) => setSortSlug(event.target.value)}
-                aria-invalid={errors.sort || undefined}
+                aria-invalid={Boolean(errors.items) || undefined}
                 aria-describedby="sort-error"
                 className={cn(fieldClass, 'flex-1 min-w-0 px-4 py-2 cursor-pointer')}
               >
@@ -348,8 +399,8 @@ export default function LeadForm() {
                 Добавить
               </Button>
             </div>
-            <p id="sort-error" role="alert" hidden={!errors.sort} className={errorClass}>
-              Выберите сорт кофе.
+            <p id="sort-error" role="alert" hidden={!errors.items} className={errorClass}>
+              {errors.items ?? 'Добавьте хотя бы один сорт кофе'}
             </p>
 
             <OrderTable
@@ -380,10 +431,11 @@ export default function LeadForm() {
             name="comment"
             rows={3}
             required={isQuestion}
+            maxLength={1000}
             placeholder="Например: помол под воронку, привезти в офис"
             value={comment}
             onChange={(event) => setComment(event.target.value)}
-            aria-invalid={errors.comment || undefined}
+            aria-invalid={Boolean(errors.comment) || undefined}
             aria-describedby="comment-hint comment-question-hint comment-error"
             className={cn(fieldClass, 'py-3 resize-y')}
           />
@@ -394,7 +446,7 @@ export default function LeadForm() {
             Напишите вопрос — перезвоним и ответим.
           </p>
           <p id="comment-error" role="alert" hidden={!errors.comment} className={errorClass}>
-            Напишите вопрос.
+            {errors.comment ?? 'Напишите вопрос'}
           </p>
         </div>
 
