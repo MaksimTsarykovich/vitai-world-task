@@ -13,6 +13,10 @@ RUN npm ci
 FROM node:24-bookworm-slim AS builder
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
+# Публичный адрес нужен уже на сборке: статические canonical, OG, robots и
+# sitemap вшиваются в HTML/XML. Compose передаёт его из .env (см. compose.yaml).
+ARG SITE_URL=http://localhost:3000
+ENV SITE_URL=${SITE_URL}
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
@@ -33,6 +37,8 @@ RUN groupadd --system --gid 1001 nodejs \
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+# скрипты менеджера доступны через `docker compose exec web node scripts/...`
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 
 RUN mkdir -p /data && chown -R nextjs:nodejs /data
 
