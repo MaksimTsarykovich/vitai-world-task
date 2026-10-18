@@ -19,7 +19,7 @@
 Vercel с Turso — с сохранением версии для VPS.
 
 **3. Лог работы с ИИ** — [`artifacts/ai-log/`](https://github.com/MaksimTsarykovich/vitai-world-task/tree/main/artifacts/ai-log)
-Транскрипт сессии Hermes Agent (680 сообщений), где агент работал оркестратором:
+Транскрипт сессии Hermes Agent (1017 сообщений), где агент работал оркестратором:
 ставил задачи исполнителю, проверял результат, вёл git. Плюс четыре выгрузки
 сессий OpenCode CLI (дизайн, перенос в Next.js, API заявки, M4 с Telegram и SEO).
 Не причёсывал: видны и правки заказчика, и ошибки ИИ.
