@@ -9,9 +9,9 @@
 
 Тестовое задание по обжарке «Кварта» готово. Материалы одним сообщением:
 
-**1. Живой сайт** — `https://<АДРЕС_VERCEL_ИЛИ_ДОМЕН>/`
-Форма заявки работает на боевом адресе: заявка сохраняется в базу и дублируется
-в Telegram-канал менеджера.
+**1. Живой сайт** — https://vitai-world-task.vercel.app/
+Форма заявки работает на боевом адресе: заявка сохраняется в базу Turso и
+дублируется в Telegram-канал менеджера (<https://t.me/kvarta_orders>).
 
 **2. Репозиторий** — https://github.com/MaksimTsarykovich/vitai-world-task
 Публичный. Коммиты пошаговые, работа разбита на задачи (#21–#26): спецификация
@@ -24,9 +24,11 @@ Vercel с Turso — с сохранением версии для VPS.
 сессий OpenCode CLI (дизайн, перенос в Next.js, API заявки, M4 с Telegram и SEO).
 Не причёсывал: видны и правки заказчика, и ошибки ИИ.
 
-**4. Lighthouse mobile** — отчёт в репозитории:
-[`artifacts/lighthouse/mobile.report.html`](https://github.com/MaksimTsarykovich/vitai-world-task/blob/main/artifacts/lighthouse/mobile.report.html)
-Performance 93–95, Accessibility 100, Best Practices 77, SEO 100.
+**4. Lighthouse mobile** — замер на живом домене, отчёты в репозитории:
+[`artifacts/lighthouse/mobile-live.report.html`](https://github.com/MaksimTsarykovich/vitai-world-task/blob/main/artifacts/lighthouse/mobile-live.report.html)
+(и локальная сборка — `mobile.report.html`).
+Performance **99**, Accessibility **100**, Best Practices 77, SEO **100**,
+LCP 1.9 с, CLS 0.036, TBT 120 мс.
 Best Practices ниже из-за встроенной Яндекс.Карты: она ставит сторонние cookie
 и грузит 4.5 МБ тайлов. Карта — требование к контактам, поэтому оставили как есть
 и описали компромисс в README и чеклисте.

@@ -2,16 +2,49 @@
 
 Тестовое задание: одностраничный лендинг маленькой минской обжарки «Кварта» с
 рабочей формой заявки. Корзины и онлайн-оплаты нет — менеджер перезванивает и
-оформляет заказ.
+оформляет заказ. Исходное ТЗ — <https://tz.vitai.world/>.
 
-Исходное ТЗ — <https://tz.vitai.world/>. Спецификация — [`docs/SPEC.md`](docs/SPEC.md).
+## Ссылки
+
+- **Живой сайт:** <https://vitai-world-task.vercel.app> — лендинг и форма в проде
+  (Vercel, база в Turso).
+- **Заявки в Telegram:** <https://t.me/kvarta_orders> — канал, куда приходит дубль
+  каждой заявки.
+- **Спецификация:** [`docs/SPEC.md`](docs/SPEC.md) — объём, стек, критерии приёмки.
+- **Чеклист сдачи:** [`artifacts/submission/CHECKLIST.md`](artifacts/submission/CHECKLIST.md) —
+  соответствие пунктам ТЗ, метрики, допущения, что не успели.
+- **Лог работы с ИИ:** [`artifacts/ai-log/`](artifacts/ai-log/README.md) — транскрипт
+  сессии оркестратора (1017 сообщений) и сессии OpenCode.
 
 ## Стек
 
-Next.js 16 (App Router, React 19) + TypeScript strict, Tailwind CSS 4 со своими
-токенами, Zod (одна схема для клиента и сервера), Vitest. База — SQLite через
-`@libsql/client`: файл в томе на VPS или Turso по сети на Vercel, код один и
-отличается только `DATABASE_URL`. Запуск: Docker + Compose либо Vercel.
+- **Приложение:** Next.js 16, App Router, React 19, TypeScript strict.
+- **Стили:** Tailwind CSS 4 и собственные design-токены (цвета, отступы, типографика).
+- **Данные:** SQLite через `@libsql/client`. На VPS — файл в томе Docker, на Vercel —
+  Turso по сети; код один, отличается только `DATABASE_URL`.
+- **Валидация:** Zod, одна схема для клиента и сервера.
+- **Тесты:** Vitest — 14 файлов, 95 тестов.
+- **Запуск:** Docker + Compose на своём сервере либо Vercel.
+
+## Структура проекта
+
+```text
+.
+├── web/                    # приложение
+│   ├── app/                # App Router: главная, /api/lead, /api/health, OG, robots, sitemap
+│   ├── components/
+│   │   ├── sections/       # блоки лендинга: hero, ассортимент, доставка, контакты
+│   │   ├── form/           # форма заявки и её поля
+│   │   └── ui/             # мелкие компоненты: карта, иконки
+│   ├── lib/                # схема и клиент базы, валидация, атрибуция, Telegram
+│   ├── scripts/            # миграция, экспорт заявок, бэкап, smoke-проверка
+│   ├── tests/              # Vitest
+│   └── Dockerfile          # прод-образ для VPS
+├── docs/                   # SPEC, RUNBOOK, DEPLOY-VERCEL, M3-LEAD-API
+├── artifacts/              # ai-log, lighthouse, submission, issues
+├── compose.yaml            # VPS: приложение + том с базой SQLite
+└── .env.example            # переменные окружения без секретов
+```
 
 ## Запуск
 
@@ -23,8 +56,8 @@ docker compose up -d --build      # http://localhost:3000, живость — /a
 Без Docker: `cd web && npm ci && DATABASE_URL=file:./data/kvarta.db npm run dev`.
 Проверки: `cd web && npm run lint && npm run typecheck && npm test && npm run build`.
 
-Деплой по шагам — [`docs/DEPLOY-VERCEL.md`](docs/DEPLOY-VERCEL.md) (Vercel + Turso)
-и [`docs/RUNBOOK.md`](docs/RUNBOOK.md) (VPS + Caddy, эксплуатация).
+Деплой по шагам: Vercel + Turso — [`docs/DEPLOY-VERCEL.md`](docs/DEPLOY-VERCEL.md),
+VPS + Caddy и эксплуатация — [`docs/RUNBOOK.md`](docs/RUNBOOK.md).
 
 ## Что делали сами, что ИИ
 
@@ -61,31 +94,12 @@ Next.js, API заявки с дедупликацией и атрибуцией,
   теста «выключено без переменных». Заглушки выставили явно, прогон проверяется
   в трёх режимах окружения.
 
-## Что не успели или сделали бы иначе
-
-- Авторов фотографий с Unsplash подтвердить автоматически не удалось (страницы
-  кадров закрыты анти-ботом) — в [`artifacts/issues/23-landing/licenses.md`](artifacts/issues/23-landing/licenses.md)
-  стоит «автор уточняется».
-- Telegram-дубль включается переменными; без токена он выключен — в репозитории
-  лежит только инструкция.
-- Сделали бы иначе: часть правок дизайна пришла уже после переноса в Next.js,
-  поэтому связку «макет → компоненты» переделывали дважды. Правильнее было
-  заморозить макет до старта переноса.
-
-## Качество
-
-Lighthouse mobile на прод-сборке: performance **92–95**, accessibility **100**,
-best-practices **77**, SEO **100**, CLS 0, LCP 2.8–3.2 с в симуляции, TBT 50–130 мс.
-Best-practices ниже из-за встроенной Яндекс.Карты (сторонние cookie и 4.5 МБ
-тайлов) — осознанный компромисс, разбор в [`artifacts/submission/CHECKLIST.md`](artifacts/submission/CHECKLIST.md).
-Тесты: 14 файлов, 95 тестов.
-
 ## Подробности
 
-- [`docs/SPEC.md`](docs/SPEC.md) — объём, стек, критерии приёмки, этапы.
+- [`docs/SPEC.md`](docs/SPEC.md) — объём, стек, критерии приёмки, этапы работ.
+- [`docs/RUNBOOK.md`](docs/RUNBOOK.md) — VPS с Caddy, API заявки, выгрузка и бэкап,
+  диагностика Telegram, SEO, переменные окружения.
 - [`docs/DEPLOY-VERCEL.md`](docs/DEPLOY-VERCEL.md) — деплой на Vercel с Turso.
-- [`docs/RUNBOOK.md`](docs/RUNBOOK.md) — запуск на VPS, API заявки, выгрузка и
-  бэкап, диагностика Telegram, SEO.
-- [`artifacts/submission/`](artifacts/submission/) — чеклист сдачи и текст сообщения.
-- [`artifacts/ai-log/`](artifacts/ai-log/README.md) — полный лог работы с ИИ:
-  транскрипт сессии оркестратора (1017 сообщений) и сессии OpenCode.
+- [`artifacts/submission/CHECKLIST.md`](artifacts/submission/CHECKLIST.md) — метрики
+  Lighthouse, допущения, что не успели.
+- [`artifacts/ai-log/`](artifacts/ai-log/README.md) — полный лог работы с ИИ.
