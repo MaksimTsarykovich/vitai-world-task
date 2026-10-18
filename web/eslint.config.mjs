@@ -9,4 +9,10 @@ export default [
     files: ['**/*.ts', '**/*.tsx'],
     languageOptions: { parserOptions: { ecmaFeatures: { jsx: true } } },
   },
+  {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: { process: 'readonly', console: 'readonly', fetch: 'readonly' },
+    },
+  },
 ];
