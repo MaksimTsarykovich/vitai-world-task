@@ -4,7 +4,6 @@ import Header from '@/components/sections/Header';
 import Hero from '@/components/sections/Hero';
 import Kontakty from '@/components/sections/Kontakty';
 import Zayavka from '@/components/sections/Zayavka';
-import StickyCta from '@/components/ui/StickyCta';
 import { site } from '@/lib/site';
 import { siteUrl } from '@/lib/site-url';
 
@@ -51,7 +50,6 @@ export default function Home() {
       </main>
 
       <Footer />
-      <StickyCta />
     </>
   );
 }

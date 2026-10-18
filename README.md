@@ -324,8 +324,8 @@ Bot API не влияет на время ответа. Ошибка отпра�
 ## Качество и проверки
 
 - **Lighthouse mobile** (прод-сборка, симуляция slow 4G):
-  performance **93–95**, accessibility **100**, best-practices **77**, SEO **100**;
-  LCP 2.8–3.1 с (в симуляции), CLS 0, TBT 60–80 мс, вес страницы 4.8 МБ. Отчёты —
+  performance **92–95**, accessibility **100**, best-practices **77**, SEO **100**;
+  LCP 2.8–3.2 с (в симуляции), CLS 0, TBT 50–130 мс, вес страницы 4.8 МБ. Отчёты —
   `artifacts/lighthouse/mobile.report.json` и `mobile.report.html`, разбор метрик и
   отклонений — в [`artifacts/submission/CHECKLIST.md`](artifacts/submission/CHECKLIST.md).
 - **Карта встроена всегда**: в контактах сразу рендерится `<iframe>` Яндекс.Карты

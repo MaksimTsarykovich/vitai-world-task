@@ -25,9 +25,8 @@
   --radius-md: 10px;
   --radius-lg: 16px;
 
-  /* Тени: липкая шапка и липкая кнопка */
+  /* Тень липкой шапки */
   --shadow-bar: 0 6px 20px color-mix(in srgb, var(--color-ink) 22%, transparent);
-  --shadow-lift: 0 6px 0 color-mix(in srgb, var(--color-ink) 18%, transparent);
 }
 
 /* ── База ──────────────────────────────────────────────────────────── */

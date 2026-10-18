@@ -461,7 +461,7 @@ export default function LeadForm() {
             disabled={sending}
             className="w-full sm:w-auto px-8"
           >
-            {sending ? 'Отправляем…' : 'Отправить заявку'}
+            {sending ? 'Отправляем…' : 'Оставить заявку'}
           </Button>
         </div>
       </div>
