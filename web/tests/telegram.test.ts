@@ -32,7 +32,11 @@ async function loadTelegram(env: Record<string, string> = {}) {
   vi.resetModules();
   vi.unstubAllEnvs();
 
-  for (const [key, value] of Object.entries(env)) {
+  // База — Telegram выключен, что бы ни лежало в окружении запуска: иначе
+  // унаследованные TELEGRAM_* включат отправку в «не задано»-сценариях.
+  const values = { TELEGRAM_BOT_TOKEN: '', TELEGRAM_CHAT_ID: '', ...env };
+
+  for (const [key, value] of Object.entries(values)) {
     vi.stubEnv(key, value);
   }
 

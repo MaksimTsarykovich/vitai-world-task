@@ -1,14 +1,18 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const dir = mkdtempSync(join(tmpdir(), 'kvarta-api-'));
 const dbFile = join(dir, 'api.db');
 
-process.env.DATABASE_URL = `file:${dbFile}`;
-process.env.LEAD_RATE_LIMIT = '20';
-process.env.TRUST_PROXY = '0';
+// Явные заглушки: тест не должен зависеть от окружения, из которого запущен.
+vi.stubEnv('DATABASE_URL', `file:${dbFile}`);
+vi.stubEnv('LEAD_RATE_LIMIT', '20');
+vi.stubEnv('TRUST_PROXY', '0');
+// Telegram выключен, иначе route попытается отправить заявку по-настоящему.
+vi.stubEnv('TELEGRAM_BOT_TOKEN', '');
+vi.stubEnv('TELEGRAM_CHAT_ID', '');
 
 const { POST, GET } = await import('@/app/api/lead/route');
 const { getDb } = await import('@/lib/db');
@@ -65,6 +69,7 @@ beforeEach(() => {
 afterAll(async () => {
   (await getDb()).close();
   rmSync(dir, { recursive: true, force: true });
+  vi.unstubAllEnvs();
 });
 
 describe('POST /api/lead', () => {
