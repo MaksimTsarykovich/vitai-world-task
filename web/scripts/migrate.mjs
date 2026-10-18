@@ -11,7 +11,7 @@
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { createClient } from '@libsql/client';
-import { SCHEMA_VERSION, applyMigrations } from '../lib/schema.mjs';
+import { SCHEMA_VERSION, applyMigrations, readSchemaVersion } from '../lib/schema.mjs';
 
 const url = process.env.DATABASE_URL;
 
@@ -30,8 +30,7 @@ const db = createClient({ url, authToken: process.env.DATABASE_AUTH_TOKEN || und
 try {
   await applyMigrations(db);
 
-  const result = await db.execute('PRAGMA user_version');
-  const schemaVersion = Number(result.rows[0]?.user_version ?? 0);
+  const schemaVersion = await readSchemaVersion(db);
 
   console.log(`✓ Миграция применена. Версия схемы: ${schemaVersion} (актуальная ${SCHEMA_VERSION})`);
 

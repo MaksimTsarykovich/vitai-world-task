@@ -1,9 +1,10 @@
-import { createClient } from '@libsql/client';
+import { createClient, type Client, type InStatement } from '@libsql/client';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { SCHEMA_VERSION, openDatabase } from '@/lib/db';
+import { SCHEMA_VERSION, openDatabase, readSchemaVersion } from '@/lib/db';
+import { applyMigrations } from '@/lib/schema.mjs';
 
 const dir = mkdtempSync(join(tmpdir(), 'kvarta-migration-'));
 
@@ -40,9 +41,30 @@ async function columns(db: Awaited<ReturnType<typeof openDatabase>>): Promise<st
   return result.rows.map((row) => String(row.name));
 }
 
-async function userVersion(db: Awaited<ReturnType<typeof openDatabase>>): Promise<number> {
-  const result = await db.execute('PRAGMA user_version');
-  return Number(result.rows[0]?.user_version);
+/**
+ * Обёртка над клиентом, которая, как Turso Cloud, отклоняет любой statement
+ * вида `PRAGMA user_version = N` (SQL_PARSE_ERROR). Всё остальное проксируется.
+ */
+function strictTursoClient(client: Client): Client {
+  const assertAllowed = (statement: InStatement): void => {
+    const sql = typeof statement === 'string' ? statement : statement.sql;
+
+    if (/^\s*PRAGMA\s+user_version\s*=/i.test(sql)) {
+      throw new Error('SQL_PARSE_ERROR: SQL not allowed statement: PRAGMA user_version = 2');
+    }
+  };
+
+  return {
+    execute: (statement: InStatement) => {
+      assertAllowed(statement);
+      return client.execute(statement);
+    },
+    batch: (statements: InStatement[], mode?: Parameters<Client['batch']>[1]) => {
+      statements.forEach(assertAllowed);
+      return client.batch(statements, mode);
+    },
+    close: () => client.close(),
+  } as unknown as Client;
 }
 
 describe('Миграция v1 → v2', () => {
@@ -64,7 +86,7 @@ describe('Миграция v1 → v2', () => {
 
     expect(names).toContain('order_items');
     expect(names).toContain('subscription');
-    expect(await userVersion(db)).toBe(SCHEMA_VERSION);
+    expect(await readSchemaVersion(db)).toBe(SCHEMA_VERSION);
     expect(SCHEMA_VERSION).toBe(2);
 
     const result = await db.execute(
@@ -94,7 +116,7 @@ describe('Миграция v1 → v2', () => {
     for (let i = 0; i < 3; i += 1) {
       const db = await openDatabase(url);
 
-      expect(await userVersion(db)).toBe(2);
+      expect(await readSchemaVersion(db)).toBe(2);
       const count = await db.execute('SELECT count(*) AS n FROM leads');
       expect(Number(count.rows[0]?.n)).toBe(1);
       db.close();
@@ -108,7 +130,33 @@ describe('Миграция v1 → v2', () => {
 
     expect(names).toContain('order_items');
     expect(names).toContain('subscription');
-    expect(await userVersion(db)).toBe(2);
+    expect(await readSchemaVersion(db)).toBe(2);
     db.close();
+  });
+});
+
+describe('Переносимая версия схемы (без PRAGMA user_version)', () => {
+  it('readSchemaVersion на чистой базе возвращает 0', async () => {
+    const url = `file:${join(dir, 'fresh.db')}`;
+    const db = createClient({ url });
+
+    expect(await readSchemaVersion(db)).toBe(0);
+
+    db.close();
+  });
+
+  it('миграция проходит, даже когда Turso запрещает PRAGMA user_version = N', async () => {
+    const url = `file:${join(dir, 'turso.db')}`;
+    const real = createClient({ url });
+    const client = strictTursoClient(real);
+
+    await expect(applyMigrations(client)).resolves.toBeUndefined();
+
+    expect(await readSchemaVersion(client)).toBe(SCHEMA_VERSION);
+
+    const tables = await client.execute("SELECT name FROM sqlite_master WHERE type = 'table'");
+    expect(tables.rows.map((row) => String(row.name))).toContain('schema_migrations');
+
+    real.close();
   });
 });

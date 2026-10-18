@@ -2,9 +2,9 @@ import { createClient, type Client } from '@libsql/client';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { env } from '@/lib/env';
-import { SCHEMA_SQL, SCHEMA_VERSION, applyMigrations } from '@/lib/schema.mjs';
+import { SCHEMA_SQL, SCHEMA_VERSION, applyMigrations, readSchemaVersion } from '@/lib/schema.mjs';
 
-export { SCHEMA_SQL, SCHEMA_VERSION };
+export { SCHEMA_SQL, SCHEMA_VERSION, readSchemaVersion };
 
 export type Db = Client;
 
@@ -60,10 +60,10 @@ export function getDb(): Promise<Db> {
 export async function dbStatus(): Promise<{ ok: boolean; schemaVersion: number }> {
   const db = await getDb();
   const probe = await db.execute('SELECT 1 AS ok');
-  const version = await db.execute('PRAGMA user_version');
+  const schemaVersion = await readSchemaVersion(db);
 
   return {
     ok: Number(probe.rows[0]?.ok) === 1,
-    schemaVersion: Number(version.rows[0]?.user_version ?? 0),
+    schemaVersion,
   };
 }

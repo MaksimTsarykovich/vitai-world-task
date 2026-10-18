@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { SCHEMA_VERSION, openDatabase } from '@/lib/db';
+import { SCHEMA_VERSION, openDatabase, readSchemaVersion } from '@/lib/db';
 
 const dir = mkdtempSync(join(tmpdir(), 'kvarta-db-'));
 const url = `file:${join(dir, 'kvarta.db')}`;
@@ -16,10 +16,11 @@ describe('libSQL: схема и запись', () => {
     const db = await openDatabase(url);
 
     const tables = await db.execute("SELECT name FROM sqlite_master WHERE type = 'table'");
-    expect(tables.rows.map((row) => String(row.name))).toContain('leads');
+    const names = tables.rows.map((row) => String(row.name));
+    expect(names).toContain('leads');
+    expect(names).toContain('schema_migrations');
 
-    const version = await db.execute('PRAGMA user_version');
-    expect(Number(version.rows[0]?.user_version)).toBe(SCHEMA_VERSION);
+    expect(await readSchemaVersion(db)).toBe(SCHEMA_VERSION);
 
     db.close();
   });

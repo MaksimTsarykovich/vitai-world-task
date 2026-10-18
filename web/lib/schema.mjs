@@ -39,7 +39,22 @@ export const CREATE_INDEXES = [
   'CREATE INDEX IF NOT EXISTS idx_leads_created ON leads (created_at DESC)',
 ];
 
-export const SCHEMA_SQL = `${[CREATE_LEADS_TABLE, ...CREATE_INDEXES].join(';\n')};`;
+/*
+ * Переносимая таблица учёта версии схемы. Turso Cloud запрещает
+ * `PRAGMA user_version = N` (SQL_PARSE_ERROR), поэтому версия живёт в данных,
+ * а не в заголовке файла.
+ */
+export const CREATE_SCHEMA_MIGRATIONS = `
+CREATE TABLE IF NOT EXISTS schema_migrations (
+  version    INTEGER PRIMARY KEY,
+  applied_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+)`;
+
+export const SCHEMA_SQL = `${[
+  CREATE_LEADS_TABLE,
+  ...CREATE_INDEXES,
+  CREATE_SCHEMA_MIGRATIONS,
+].join(';\n')};`;
 
 export const LEAD_COLUMNS_V2 = [
   { name: 'order_items', ddl: 'ALTER TABLE leads ADD COLUMN order_items TEXT' },
@@ -50,25 +65,57 @@ export const LEAD_COLUMNS_V2 = [
 ];
 
 /**
- * Идемпотентная миграция: создаёт полную таблицу для чистой базы, а на базе v1
- * добавляет только недостающие колонки и выставляет user_version = 2.
- * PRAGMA table_info читаем через execute, пишущие шаги идут одной
- * write-транзакцией client.batch.
+ * Версия схемы из таблицы schema_migrations. Свежая или старая база без этой
+ * таблицы — 0 (не падаем).
+ */
+export async function readSchemaVersion(client) {
+  try {
+    const result = await client.execute(
+      'SELECT COALESCE(MAX(version), 0) AS v FROM schema_migrations',
+    );
+
+    return Number(result.rows[0]?.v ?? 0);
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Идемпотентная миграция: создаёт таблицу для чистой базы, на базе v1 добавляет
+ * недостающие колонки, фиксирует версию в schema_migrations. Пишущие шаги идут
+ * write-транзакциями client.batch, PRAGMA table_info читается через execute.
  */
 export async function applyMigrations(client) {
-  await client.batch([CREATE_LEADS_TABLE, ...CREATE_INDEXES], 'write');
+  await client.batch(
+    [CREATE_LEADS_TABLE, ...CREATE_INDEXES, CREATE_SCHEMA_MIGRATIONS],
+    'write',
+  );
 
   const info = await client.execute('PRAGMA table_info(leads)');
   const columns = new Set(info.rows.map((row) => String(row.name)));
 
-  const statements = [];
+  const alters = [];
 
   for (const column of LEAD_COLUMNS_V2) {
     if (!columns.has(column.name)) {
-      statements.push(column.ddl);
+      alters.push(column.ddl);
     }
   }
 
-  statements.push(`PRAGMA user_version = ${SCHEMA_VERSION}`);
-  await client.batch(statements, 'write');
+  if (alters.length > 0) {
+    await client.batch(alters, 'write');
+  }
+
+  await client.execute({
+    sql: 'INSERT OR IGNORE INTO schema_migrations (version) VALUES (?)',
+    args: [SCHEMA_VERSION],
+  });
+
+  // PRAGMA user_version нужен только внешним инструментам на локальном файле:
+  // Turso Cloud его запрещает, поэтому это отдельный необязательный шаг.
+  try {
+    await client.execute(`PRAGMA user_version = ${SCHEMA_VERSION}`);
+  } catch {
+    // Игнорируем: версия уже зафиксирована в schema_migrations.
+  }
 }

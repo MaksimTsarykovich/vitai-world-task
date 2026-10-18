@@ -17,6 +17,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { createClient } from '@libsql/client';
+import { readSchemaVersion } from '../lib/schema.mjs';
 
 const USAGE = `Резервная копия базы.
 
@@ -84,37 +85,41 @@ function sqlLiteral(value) {
   return `'${String(value).replace(/'/g, "''")}'`;
 }
 
-/** Логический дамп для сетевой базы: схема + данные в виде INSERT-ов. */
+/** Логический дамп для сетевой базы: схема всех таблиц + данные в виде INSERT-ов. */
 async function logicalDump(db) {
-  const schema = await db.execute(
+  const objects = await db.execute(
     `SELECT type, name, sql FROM sqlite_master
      WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%'
      ORDER BY CASE type WHEN 'table' THEN 0 WHEN 'index' THEN 1 ELSE 2 END, name`,
   );
-  const columns = await db.execute('PRAGMA table_info(leads)');
-  const names = columns.rows.map((row) => String(row.name));
-  const data = await db.execute(`SELECT ${names.join(', ')} FROM leads ORDER BY id`);
-
-  let version = 0;
-
-  try {
-    const result = await db.execute('PRAGMA user_version');
-    version = Number(result.rows[0]?.user_version ?? 0);
-  } catch {
-    // На некоторых прокси PRAGMA user_version недоступен — версия не критична.
-  }
+  // Версию берём из schema_migrations: PRAGMA user_version на Turso недоступен.
+  const version = await readSchemaVersion(db);
 
   const lines = ['-- Логический дамп Kvarta', `PRAGMA user_version = ${version};`, ''];
 
-  for (const row of schema.rows) {
+  for (const row of objects.rows) {
     lines.push(`${String(row.sql).trim()};`);
   }
 
   lines.push('');
 
-  for (const row of data.rows) {
-    const values = names.map((name) => sqlLiteral(row[name]));
-    lines.push(`INSERT INTO leads (${names.join(', ')}) VALUES (${values.join(', ')});`);
+  const tables = objects.rows
+    .filter((row) => row.type === 'table')
+    .map((row) => String(row.name));
+
+  for (const table of tables) {
+    const columns = await db.execute(`PRAGMA table_info(${table})`);
+    const names = columns.rows.map((row) => String(row.name));
+
+    if (names.length === 0) continue;
+
+    const orderBy = table === 'leads' ? ' ORDER BY id' : '';
+    const data = await db.execute(`SELECT ${names.join(', ')} FROM ${table}${orderBy}`);
+
+    for (const row of data.rows) {
+      const values = names.map((name) => sqlLiteral(row[name]));
+      lines.push(`INSERT INTO ${table} (${names.join(', ')}) VALUES (${values.join(', ')});`);
+    }
   }
 
   return `${lines.join('\n')}\n`;
