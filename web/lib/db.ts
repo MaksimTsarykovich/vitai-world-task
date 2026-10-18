@@ -3,11 +3,11 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { env } from '@/lib/env';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /*
- * Данные M1: одна таблица заявок и индексы. API записи (/api/lead),
- * нормализация телефона и дедупликация появляются на этапе M3.
+ * Полная схема для чистой базы. На существующей базе v1 недостающие колонки
+ * добавляются миграцией ниже через ALTER TABLE — данные не теряются.
  */
 export const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS leads (
@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS leads (
   phone          TEXT NOT NULL,
   interest       TEXT NOT NULL CHECK (interest IN ('subscription','order','question')),
   comment        TEXT,
+  order_items    TEXT,
+  subscription   INTEGER NOT NULL DEFAULT 0,
   utm_source     TEXT,
   utm_medium     TEXT,
   utm_campaign   TEXT,
@@ -36,9 +38,41 @@ CREATE INDEX IF NOT EXISTS idx_leads_phone_created ON leads (phone, created_at D
 CREATE INDEX IF NOT EXISTS idx_leads_created ON leads (created_at DESC);
 `;
 
+const LEAD_COLUMNS_V2: Array<{ name: string; ddl: string }> = [
+  { name: 'order_items', ddl: 'ALTER TABLE leads ADD COLUMN order_items TEXT' },
+  {
+    name: 'subscription',
+    ddl: 'ALTER TABLE leads ADD COLUMN subscription INTEGER NOT NULL DEFAULT 0',
+  },
+];
+
+function leadColumns(db: Database.Database): Set<string> {
+  const rows = db.prepare('PRAGMA table_info(leads)').all() as Array<{ name: string }>;
+  return new Set(rows.map((row) => row.name));
+}
+
+/**
+ * Идемпотентная миграция: создаёт полную таблицу для чистой базы, а на базе v1
+ * добавляет только недостающие колонки и выставляет user_version = 2.
+ */
+function migrate(db: Database.Database): void {
+  db.exec(SCHEMA_SQL);
+
+  const columns = leadColumns(db);
+
+  for (const column of LEAD_COLUMNS_V2) {
+    if (!columns.has(column.name)) {
+      db.exec(column.ddl);
+    }
+  }
+
+  db.exec(SCHEMA_SQL);
+  db.pragma(`user_version = ${SCHEMA_VERSION}`);
+}
+
 export type Db = Database.Database;
 
-// Открывает (при необходимости создаёт) файл БД, включает WAL и создаёт схему.
+// Открывает (при необходимости создаёт) файл БД, включает WAL и применяет схему.
 export function openDatabase(path: string): Db {
   mkdirSync(dirname(path), { recursive: true });
 
@@ -47,8 +81,9 @@ export function openDatabase(path: string): Db {
   db.pragma('busy_timeout = 5000');
   db.pragma('synchronous = NORMAL');
   db.pragma('foreign_keys = ON');
-  db.exec(SCHEMA_SQL);
-  db.pragma(`user_version = ${SCHEMA_VERSION}`);
+
+  const apply = db.transaction(() => migrate(db));
+  apply();
 
   return db;
 }
