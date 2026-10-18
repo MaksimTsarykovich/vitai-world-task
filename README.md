@@ -14,7 +14,7 @@
 - **Чеклист сдачи:** [`artifacts/submission/CHECKLIST.md`](artifacts/submission/CHECKLIST.md) —
   соответствие пунктам ТЗ, метрики, допущения, что не успели.
 - **Лог работы с ИИ:** [`artifacts/ai-log/`](artifacts/ai-log/README.md) — транскрипт
-  сессии оркестратора (Hermes) и сессии исполнителей (OpenCode), для всего проекта использовал модель `deepseek-v4.1-flash`
+  сессии оркестратора (Hermes) и сессии исполнителей (OpenCode); модель одна на весь проект — `deepseek-v4.1-flash`.
 
 ## Стек
 
