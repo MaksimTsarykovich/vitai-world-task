@@ -1,6 +1,5 @@
 import Image from 'next/image';
 import Container from '@/components/ui/Container';
-import Stamp from '@/components/ui/Stamp';
 import { buttonClasses } from '@/components/ui/Button';
 import KtoMy from '@/components/sections/KtoMy';
 
@@ -52,8 +51,6 @@ export default function Hero() {
                 className="w-full h-auto object-cover rounded-lg border border-ink/25 aspect-[4/5]"
               />
             </figure>
-
-            <Stamp className="absolute -top-4 right-2 sm:right-6 tilt-r" />
           </div>
         </div>
       </Container>

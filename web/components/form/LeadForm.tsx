@@ -193,7 +193,7 @@ export default function LeadForm() {
       setStatus({
         kind: 'success',
         title: 'Заявка принята — перезвоним',
-        text: `Спасибо, ${payload.name}. Перезвоним в рабочее время.`,
+        text: `Спасибо, ${payload.name}.`,
       });
       resetForm();
     } catch {
