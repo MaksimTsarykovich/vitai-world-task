@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  LEAD_PRODUCT_SLUGS,
   formatLeadFieldErrors,
   leadRequestSchema,
   sanitizeText,
 } from '@/lib/lead-schema';
+import { products } from '@/lib/products';
 
 const base = {
   name: 'Аня',
@@ -169,5 +171,35 @@ describe('Zod-схема заявки', () => {
     expect(sanitizeText('   ', 10)).toBeNull();
     expect(sanitizeText('abcdef', 3)).toBe('abc');
     expect(sanitizeText(null, 3)).toBeNull();
+  });
+});
+
+describe('Слаги сортов — единый источник products', () => {
+  it('список слагов схемы совпадает с products по составу и порядку', () => {
+    expect(LEAD_PRODUCT_SLUGS).toEqual(products.map((product) => product.slug));
+  });
+
+  it('принимает каждый слаг из products в items заказа', () => {
+    for (const product of products) {
+      const result = leadRequestSchema.safeParse({
+        ...base,
+        items: [{ slug: product.slug, qty: 1 }],
+      });
+
+      expect(result.success, `слаг «${product.slug}» должен приниматься схемой`).toBe(true);
+    }
+  });
+
+  it('отклоняет несуществующий слаг с сообщением «Выберите сорт из ассортимента»', () => {
+    const result = leadRequestSchema.safeParse({
+      ...base,
+      items: [{ slug: 'gift', qty: 1 }],
+    });
+
+    expect(result.success).toBe(false);
+
+    if (!result.success) {
+      expect(formatLeadFieldErrors(result.error).items).toBe('Выберите сорт из ассортимента');
+    }
   });
 });

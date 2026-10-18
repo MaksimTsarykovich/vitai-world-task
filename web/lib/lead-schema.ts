@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { BY_PHONE_MESSAGE, normalizeByPhone } from '@/lib/phone';
+import { products } from '@/lib/products';
 
 /** Одна Zod-схема для сервера и для клиентской подсветки полей. */
 export const LEAD_NAME_MESSAGE = 'Укажите имя (2–80 символов)';
@@ -11,7 +12,13 @@ export const LEAD_ITEM_SLUG_MESSAGE = 'Выберите сорт из ассор
 export const LEAD_ITEM_QTY_MESSAGE = 'Количество — целое число от 1 до 10';
 export const LEAD_COMMENT_MAX_MESSAGE = 'Комментарий — не больше 1000 символов';
 
-export const LEAD_PRODUCT_SLUGS = ['ethiopia', 'colombia', 'brazil', 'drip'] as const;
+/**
+ * Слаги сортов кофе. Единственный источник истины — ассортимент
+ * (`products` в web/lib/products.ts): список выводим из него, чтобы enum схемы
+ * и карточки товаров не расходились. z.enum c `const`-параметром сохраняет
+ * Literal-тип элементов (ProductSlug).
+ */
+export const LEAD_PRODUCT_SLUGS = products.map((product) => product.slug);
 
 // eslint-disable-next-line no-control-regex -- намеренно вырезаем управляющие символы
 const CONTROL_CHARS = /[\u0000-\u001F\u007F-\u009F]/g;
