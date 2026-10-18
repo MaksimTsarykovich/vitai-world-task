@@ -103,3 +103,8 @@ export function saveLead(db: Db, input: SaveLeadInput): SaveLeadResult {
 
   return run.immediate(input);
 }
+
+/** Помечает заявку отправленной в Telegram (после успешного ответа Bot API). */
+export function markTelegramSent(db: Db, id: number): void {
+  db.prepare('UPDATE leads SET telegram_sent = 1 WHERE id = ?').run(id);
+}

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
+import { scheduleAfterResponse } from '@/lib/after-response';
 import { getDb } from '@/lib/db';
 import {
   formatLeadFieldErrors,
@@ -7,9 +8,10 @@ import {
   sanitizeText,
   type LeadRequest,
 } from '@/lib/lead-schema';
-import { saveLead, type LeadAttributionRow } from '@/lib/lead-store';
+import { markTelegramSent, saveLead, type LeadAttributionRow } from '@/lib/lead-store';
 import { maskPhone } from '@/lib/phone';
 import { getClientIp, leadRateLimiter } from '@/lib/rate-limit';
+import { notifyTelegram } from '@/lib/telegram';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -146,6 +148,8 @@ export async function POST(request: Request) {
     const lead = parsed.data;
     phoneForLog = lead.phone;
 
+    const attribution = resolveAttribution(lead, request);
+
     const saved = saveLead(getDb(), {
       requestId,
       name: lead.name,
@@ -154,12 +158,29 @@ export async function POST(request: Request) {
       comment: lead.comment,
       items: lead.items,
       subscription: lead.subscription,
-      attribution: resolveAttribution(lead, request),
+      attribution,
     });
 
     if (saved.kind === 'duplicate') {
       return respond(200, { status: 'duplicate', id: saved.id, requestId });
     }
+
+    // Дубль в Telegram — уже после ответа пользователю, чтобы не влиять на время.
+    // Ошибка отправки только логируется, заявка остаётся успешной.
+    scheduleAfterResponse(async () => {
+      const sent = await notifyTelegram({
+        id: saved.id,
+        name: lead.name,
+        phone: lead.phone,
+        interest: lead.interest,
+        comment: lead.comment === '' ? null : lead.comment,
+        items: lead.items,
+        subscription: lead.subscription,
+        attribution,
+      });
+
+      if (sent) markTelegramSent(getDb(), saved.id);
+    });
 
     return respond(201, { status: 'ok', id: saved.id, requestId });
   } catch (error) {

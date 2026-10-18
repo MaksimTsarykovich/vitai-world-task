@@ -5,6 +5,9 @@ services:
   web:
     build:
       context: ./web
+      args:
+        # SITE_URL вшивается в статические canonical/OG/robots/sitemap при сборке
+        SITE_URL: ${SITE_URL:-http://localhost:3000}
     image: kvarta-web:local
     restart: unless-stopped
     ports:
@@ -17,6 +20,8 @@ services:
       SITE_URL: ${SITE_URL:-http://localhost:3000}
       LEAD_RATE_LIMIT: ${LEAD_RATE_LIMIT:-20}
       TRUST_PROXY: ${TRUST_PROXY:-0}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
     volumes:
       - kvarta-data:/data
     healthcheck:

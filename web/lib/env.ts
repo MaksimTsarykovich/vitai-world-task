@@ -1,5 +1,14 @@
 import { z } from 'zod';
 
+/**
+ * Необязательное значение: пустая строка (приходит из compose как `${VAR:-}`)
+ * считается отсутствующей, чтобы Telegram не «включался» на пустых env.
+ */
+const optionalString = z
+  .string()
+  .optional()
+  .transform((value) => (typeof value === 'string' && value.trim() !== '' ? value : undefined));
+
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   // путь к файлу SQLite: локально ./data/kvarta.db, в Docker /data/kvarta.db
@@ -12,6 +21,9 @@ const schema = z.object({
   LEAD_RATE_LIMIT: z.coerce.number().int().positive().default(20),
   // доверять X-Forwarded-For только за своим reverse proxy (Caddy и т.п.)
   TRUST_PROXY: z.enum(['0', '1']).default('0'),
+  // Telegram-дубль заявки: включается только когда заданы оба значения.
+  TELEGRAM_BOT_TOKEN: optionalString,
+  TELEGRAM_CHAT_ID: optionalString,
 });
 
 export type Env = z.infer<typeof schema>;
