@@ -8,6 +8,10 @@ const schema = z.object({
   SITE_URL: z.string().url().optional(),
   PORT: z.coerce.number().int().positive().default(3000),
   HOSTNAME: z.string().default('0.0.0.0'),
+  // лимит POST /api/lead с одного IP в минуту
+  LEAD_RATE_LIMIT: z.coerce.number().int().positive().default(20),
+  // доверять X-Forwarded-For только за своим reverse proxy (Caddy и т.п.)
+  TRUST_PROXY: z.enum(['0', '1']).default('0'),
 });
 
 export type Env = z.infer<typeof schema>;
