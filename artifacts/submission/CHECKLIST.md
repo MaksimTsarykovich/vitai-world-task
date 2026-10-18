@@ -70,7 +70,7 @@
 - [x] `GET /api/health` → `{"status":"ok","db":"ok","schema":2}`.
 - [x] Заявки переживают `docker compose restart web` (SQLite в томе `kvarta-data`).
 - [x] Миграция схемы идемпотентна, данные при обновлении не теряются.
-- [x] `npm run lint`, `typecheck`, `test` (10 файлов, 75 тестов), `build` — зелёные.
+- [x] `npm run lint`, `typecheck`, `test` (12 файлов, 84 теста), `build` — зелёные.
 - [x] Горизонтального скролла нет на 320 / 360 / 390 / 414 / 1280.
 - [x] Контраст текста не ниже WCAG AA на всей странице.
 - [x] Секретов в репозитории нет: `.env` в `.gitignore`, в `.env.example` только имена.
@@ -92,3 +92,16 @@
 3. Экспорт сессий ИИ / ссылка на `artifacts/ai-log/`.
 4. Отчёт Lighthouse mobile.
 5. README (полстраницы) + короткое сообщение: что не успели и что сделали бы иначе.
+
+## 7. Как переснять Lighthouse на живом сайте
+
+Замер в репозитории снят с прод-сборки в контейнере (`localhost:3000`). После деплоя
+полезно повторить на боевом адресе — метрики сети будут другими:
+
+```bash
+CHROME_PATH=/usr/bin/google-chrome npx -y lighthouse@13 https://ваш-домен \
+  --only-categories=performance,accessibility,best-practices,seo \
+  --form-factor=mobile --throttling-method=simulate \
+  --chrome-flags="--headless=new --no-sandbox" \
+  --output=json --output=html --output-path=artifacts/lighthouse/mobile-live --quiet
+```
