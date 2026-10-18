@@ -258,8 +258,43 @@ docker compose exec web node scripts/export-leads.mjs --format csv
 Заявка уходит в Telegram после ответа пользователю (через `after()`), поэтому
 Bot API не влияет на время ответа. Ошибка отправки только логируется, заявка
 остаётся успешной, а `leads.telegram_sent` остаётся `0`. Чтобы включить,
-заполните `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHAT_ID` в `.env` и перезапустите
-`docker compose up -d`. Без обоих значений функция выключена.
+заполните `TELEGRAM_BOT_TOKEN` и `TELEGRAM_CHAT_ID` в `.env` и пересоздайте
+контейнер: `docker compose up -d --force-recreate`. Без обоих значений функция
+выключена.
+
+Бот должен быть добавлен в канал (лучше администратором), `chat_id` канала —
+вида `-100…`; для публичного канала можно указать `@username`.
+
+#### Если заявки не приходят в Telegram
+
+1. Проверьте, что переменные дошли до контейнера:
+
+   ```bash
+   docker compose exec web sh -lc 'echo ${#TELEGRAM_BOT_TOKEN} $TELEGRAM_CHAT_ID'
+   ```
+
+   Пустой токен или пустой `chat_id` — значит приложение функцию не включает.
+2. **После правки `.env` нужен пересоздающий запуск:** `docker compose up -d --force-recreate`.
+   `docker compose restart web` переменные окружения НЕ перечитывает — приложение
+   продолжит работать со старыми значениями (типичная причина «бот молчит»).
+3. Проверка Bot API напрямую (подставьте значения из `.env`):
+
+   ```bash
+   set -a; . ./.env; set +a
+   curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe"
+   curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getChat?chat_id=${TELEGRAM_CHAT_ID}"
+   curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+     -d "chat_id=${TELEGRAM_CHAT_ID}" -d "text=тест"
+   ```
+
+   `getMe` показывает бота, `getChat` — видит ли бот канал, `sendMessage` —
+   доходит ли сообщение. Ответы с `ok:false` указывают причину: `chat not found`
+   (неверный `chat_id` или бот не добавлен), `not enough rights` (бот не админ).
+4. Ошибки отправки пишутся в лог: `docker compose logs web | grep '\[telegram\]'`.
+   Запись вида `[telegram] отправка не удалась: статус 401` означает неверный
+   токен, `403` — бот не участник канала или без прав на публикацию.
+5. Если в базе у заявки `telegram_sent = 0`, а в логах пусто — переменные не
+   дошли до контейнера: вернитесь к пункту 1 и пересоздайте контейнер.
 
 ## Метаданные и SEO
 
