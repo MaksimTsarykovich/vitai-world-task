@@ -272,14 +272,15 @@ Bot API не влияет на время ответа. Ошибка отпра�
 ## Качество и проверки
 
 - **Lighthouse mobile** (прод-сборка в контейнере, симуляция slow 4G):
-  performance **93**, accessibility **100**, best-practices **100**, SEO **100**;
-  TBT 100 мс, CLS 0, вес страницы 339 КБ. Отчёты — `artifacts/lighthouse/mobile.report.json`
-  и `mobile.report.html`, разбор отклонения по LCP — в
-  [`artifacts/submission/CHECKLIST.md`](artifacts/submission/CHECKLIST.md).
-- **Карта грузится по клику**: в контактах статичный блок с адресом и кнопкой
-  «Показать карту», `<iframe>` появляется только после нажатия. Так первая загрузка
-  не тянет ~4.5 МБ тайлов Яндекса и не ставит сторонние cookie; внешняя ссылка на
-  Яндекс.Карты остаётся всегда.
+  performance **93**, accessibility **100**, best-practices **77**, SEO **100**;
+  LCP 2.0 с, CLS 0, TBT 280 мс, вес страницы 4.8 МБ. Отчёты —
+  `artifacts/lighthouse/mobile.report.json` и `mobile.report.html`, разбор метрик —
+  в [`artifacts/submission/CHECKLIST.md`](artifacts/submission/CHECKLIST.md).
+- **Карта встроена всегда**: в контактах сразу рендерится `<iframe>` Яндекс.Карты
+  (`loading="lazy"`, фиксированная высота) плюс ссылка «Открыть в Яндекс.Картах».
+  Побочная цена — около 4.5 МБ тайлов и сторонние cookie Яндекса: это снимает
+  `best-practices` в Lighthouse до 77 и поднимает TBT до 280 мс, зато LCP
+  укладывается в 2.0 с.
 - **Тесты**: `npm test` — 12 файлов, 84 теста; `scripts/smoke-lead.mjs` проверяет,
   что 10 параллельных отправок дают одну строку в базе.
 - **Проверки перед сдачей**: `npm run lint`, `typecheck`, `test`, `build` и
