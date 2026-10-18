@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Кварта — обжарка кофе в Минске. Кофе, который обжарили в четверг</title>
+<meta name="description" content="Маленькая обжарка в Минске. Обжариваем партиями по 5 кг по четвергам, развозим по пятницам. Зерно у вас на 1–3 день после обжарки. Подписка и разовый заказ.">
+<meta name="theme-color" content="#3B2A20">
+
+<!-- Open Graph (для превью в мессенджерах и соцсетях) -->
+<meta property="og:type" content="website">
+<meta property="og:locale" content="ru_BY">
+<meta property="og:title" content="Кварта — кофе, который обжарили в четверг">
+<meta property="og:description" content="Обжариваем по четвергам, развозим по пятницам. Свежее зерно на 1–3 день после обжарки. Минск, ул. Короля, 9.">
+<meta property="og:image" content="https://images.unsplash.com/photo-1524350876685-274059332603?auto=format&fit=crop&w=1200&h=630&q=80">
+
+<!-- Шрифты Google с кириллицей: display — литературная антиква Literata, UI — гротеск Manrope -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;0,7..72,700;1,7..72,400&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- Tailwind CSS 4, браузерная сборка. Сборки и npm нет: файл открывается двойным кликом -->
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+<style type="text/tailwindcss">
+  /* ── Дизайн-токены «Печатный цех обжарки» ─────────────────────────────
+     Имена цветов совпадают с палитрой брифа. Радиусы и тени — тоже токены,
+     чтобы макет переносился в проект без переименований. */
+  @theme {
+    --color-paper: #F2EBDD;        /* основной фон: тёплая типографская бумага */
+    --color-cream: #E4D8C3;        /* подложки, карточки, этикетки */
+    --color-ink: #221A15;          /* основной текст, тонкие линии */
+    --color-espresso: #3B2A20;     /* вторичный текст, глубокие блоки, липкая шапка */
+    --color-stamp: #B4452F;        /* акцент: кнопки, штампы, крупные ссылки */
+    --color-stamp-deep: #9E3A25;   /* мелкий красный текст: 4.83:1 на cream, 5.74:1 на paper */
+    --color-muted: #655547;        /* мелкие подписи и подсказки: 5.06:1 на cream, 6.01:1 на paper */
+    --color-olive: #6F7459;        /* вспомогательный акцент: крупные номера, декор */
+
+    --font-display: "Literata", Georgia, "Times New Roman", serif;
+    --font-sans: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+    /* Скругления: последовательно во всём макете */
+    --radius-none: 0px;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+
+    /* Тени: липкая шапка и липкая кнопка */
+    --shadow-bar: 0 6px 20px color-mix(in srgb, var(--color-ink) 22%, transparent);
+    --shadow-lift: 0 6px 0 color-mix(in srgb, var(--color-ink) 18%, transparent);
+  }
+</style>
+
+<!-- Текстуры, штамп, свитчер и мелкая анимация появления. Только CSS, без библиотек. -->
+<style>
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  body { overflow-x: hidden; text-rendering: optimizeLegibility; }
+
+  /* Курсор: у всего кликабельного — «рука», у недоступного — запрещающий */
+  a, button, select, summary, label[for],
+  input[type="radio"], input[type="checkbox"] { cursor: pointer; }
+  button:disabled, select:disabled, input:disabled,
+  [aria-disabled="true"] { cursor: not-allowed; }
+
+  /* Тонкое «зерно» бумаги: инлайновый SVG-шум, а не растровая картинка */
+  .paper-grain { position: relative; }
+  .paper-grain::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: .06;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* «Залом» бумаги: мягкая диагональная складка тонкой тенью (цвет — токен ink) */
+  .crease {
+    background-image:
+      linear-gradient(112deg, transparent 46%, color-mix(in srgb, var(--color-ink) 4.5%, transparent) 49%, transparent 52%),
+      linear-gradient(74deg, transparent 72%, color-mix(in srgb, var(--color-ink) 3%, transparent) 75%, transparent 78%);
+  }
+
+  /* Видимый фокус для клавиатуры по всему сайту */
+  :focus-visible {
+    outline: 2px solid var(--color-stamp);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Штамп-«печать»: полустёртая текстура через маску из того же SVG-шума */
+  .stamp-mark {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0.6 0.6 0 0.55'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23m)'/%3E%3C/svg%3E");
+            mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0.6 0.6 0 0.55'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23m)'/%3E%3C/svg%3E");
+    -webkit-mask-mode: luminosity;
+            mask-mode: luminosity;
+  }
+
+  /* Перфорация по краю «талона» */
+  .perforated {
+    background-image: radial-gradient(circle at 6px 50%, var(--color-paper) 3px, transparent 3.5px);
+    background-size: 12px 100%;
+    background-repeat: repeat-y;
+  }
+
+  /* Номер секции — контурная цифра, заметная, но честно декоративная (aria-hidden в разметке) */
+  .section-num {
+    -webkit-text-stroke: 2px var(--color-olive);
+    color: transparent;
+    letter-spacing: -.03em;
+  }
+
+  /* Мягкое проявление при прокрутке (класс .reveal + IntersectionObserver) */
+  .reveal { opacity: 0; transform: translateY(14px); transition: opacity .35s ease, transform .35s ease; }
+  .reveal.is-in { opacity: 1; transform: none; }
+
+  /* Наклон штампа */
+  .tilt-r { transform: rotate(6deg); }
+  .tilt-l-s { transform: rotate(-3.5deg); }
+
+  /* Пунктирная линия-разделитель «как в типографии» */
+  .rule-dotted {
+    height: 1px;
+    background-image: radial-gradient(circle, var(--color-ink) 1px, transparent 1.2px);
+    background-size: 7px 1px;
+    background-repeat: repeat-x;
+    opacity: .35;
+  }
+
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  /* Свитчер подписки: оформлен на скрытом чекбоксе, поэтому работает мышью и клавиатурой */
+  .switch-track {
+    background-color: var(--color-paper);
+    border-color: color-mix(in srgb, var(--color-ink) 40%, transparent);
+  }
+  .switch-knob {
+    background-color: var(--color-ink);
+    transform: translateX(0.25rem);
+  }
+  .switch-input:checked ~ .switch-track {
+    background-color: var(--color-stamp);
+    border-color: var(--color-stamp);
+  }
+  .switch-input:checked ~ .switch-track .switch-knob {
+    background-color: var(--color-paper);
+    transform: translateX(1.5rem);
+  }
+  .switch-input:focus-visible ~ .switch-track {
+    outline: 2px solid var(--color-stamp);
+    outline-offset: 2px;
+  }
+  .switch-input:disabled ~ .switch-track {
+    opacity: .6;
+    cursor: not-allowed;
+  }
+
+  /* Валидация: подсветка неверного поля мелким тёмно-красным токеном */
+  [aria-invalid="true"] { border-color: var(--color-stamp-deep); box-shadow: inset 0 0 0 1px var(--color-stamp-deep); }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .reveal { opacity: 1; transform: none; transition: none; }
+    *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+  }
+</style>
+</head>
+
+<body class="font-sans bg-paper text-ink antialiased selection:bg-stamp selection:text-paper">
+
+<a href="#zayavka" class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[60] focus:bg-ink focus:text-paper focus:px-4 focus:py-2 focus:rounded-md">Перейти к форме заявки</a>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     1. HEADER — липкая тёмная шапка со светлым текстом и красным CTA
+     ════════════════════════════════════════════════════════════════════ -->
+<header class="sticky top-0 z-50 bg-espresso text-paper border-b border-ink shadow-bar">
+  <div class="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-10">
+    <div class="flex h-16 lg:h-20 items-center justify-between gap-4">
+
+      <!-- Логотип: печатная марка, не картинка -->
+      <a href="#top" class="group flex items-baseline gap-2 shrink-0 cursor-pointer" aria-label="Кварта, на главную">
+        <span class="font-display text-2xl lg:text-[28px] font-bold tracking-[0.14em] text-paper group-hover:text-cream transition-colors duration-200">КВАРТА</span>
+      </a>
+
+      <!-- Правая часть: навигация, затем CTA и кнопка мобильного меню -->
+      <div class="flex items-center gap-5 lg:gap-7">
+
+        <!-- Навигация: десктоп -->
+        <nav class="hidden lg:flex items-center gap-7 text-sm font-medium" aria-label="Основная навигация">
+          <a href="#kto-my" class="cursor-pointer text-paper/85 hover:text-cream transition-colors duration-200 py-2">Кто мы</a>
+          <a href="#assortiment" class="cursor-pointer text-paper/85 hover:text-cream transition-colors duration-200 py-2">Наше кофе</a>
+          <a href="#kontakty" class="cursor-pointer text-paper/85 hover:text-cream transition-colors duration-200 py-2">Контакты</a>
+        </nav>
+
+        <div class="flex items-center gap-2">
+          <a href="#zayavka" class="hidden sm:inline-flex cursor-pointer items-center justify-center min-h-[44px] px-5 bg-stamp text-paper text-sm font-semibold rounded-md border border-stamp hover:bg-paper hover:text-espresso hover:border-paper transition-colors duration-200">
+            Оставить заявку
+          </a>
+
+          <!-- Кнопка мобильного меню -->
+          <button type="button" id="menu-toggle"
+            class="lg:hidden inline-flex cursor-pointer items-center justify-center w-11 h-11 -mr-1 text-paper rounded-md border border-paper/30 hover:border-paper hover:bg-ink/40 transition-colors duration-200"
+            aria-expanded="false" aria-controls="mobile-menu" aria-label="Открыть меню">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <line x1="2" y1="5" x2="18" y2="5" stroke="currentColor" stroke-width="1.6"/>
+              <line x1="2" y1="10" x2="18" y2="10" stroke="currentColor" stroke-width="1.6"/>
+              <line x1="2" y1="15" x2="13" y2="15" stroke="currentColor" stroke-width="1.6"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Мобильное меню -->
+    <nav id="mobile-menu" hidden class="lg:hidden border-t border-paper/20 py-3" aria-label="Мобильная навигация">
+      <ul class="flex flex-col">
+        <li><a href="#kto-my" class="block cursor-pointer py-3 text-paper/90 border-b border-paper/10 hover:text-cream transition-colors duration-200" data-menu-close>Кто мы</a></li>
+        <li><a href="#assortiment" class="block cursor-pointer py-3 text-paper/90 border-b border-paper/10 hover:text-cream transition-colors duration-200" data-menu-close>Наше кофе</a></li>
+        <li><a href="#kontakty" class="block cursor-pointer py-3 text-paper/90 border-b border-paper/10 hover:text-cream transition-colors duration-200" data-menu-close>Контакты</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       2. HERO — фото слева, текст справа
+       ══════════════════════════════════════════════════════════════════ -->
+  <section id="kto-my" class="relative paper-grain crease border-b border-ink/25 scroll-mt-20" aria-labelledby="hero-title">
+    <div class="relative z-10 mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-10 pt-10 pb-14 lg:pt-16 lg:pb-20">
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+
+        <!-- Текст: в разметке первым, на десктопе встаёт справа -->
+        <div class="lg:col-span-7 lg:order-2 lg:pt-6">
+          <p class="reveal text-[11px] font-semibold uppercase tracking-[0.2em] text-espresso/80">Минск · партии по 5 кг · с 2019 года</p>
+
+          <h1 id="hero-title" class="reveal mt-5 font-display font-bold text-ink leading-[0.98] tracking-[-0.01em]"
+              style="font-size: clamp(2.35rem, 8vw, 5.25rem);">
+            Кофе, который обжарили в&nbsp;четверг
+          </h1>
+
+          <div class="reveal mt-5 max-w-[46ch] space-y-3 text-espresso text-base sm:text-lg leading-relaxed">
+            <p>Мы маленькая мастерская в Минске: обжариваем кофе с 2019 года.</p>
+            <p>Нас двое — Аня и Дмитрий, оба раньше работали бариста.</p>
+            <p>Обжариваем кофе по четвергам и развозим по пятницам, зерно у вас уже через 1—3 дня после обжарки!</p>
+          </div>
+
+          <div class="reveal mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4">
+            <a href="#zayavka" class="inline-flex cursor-pointer items-center justify-center min-h-[52px] px-7 bg-stamp text-paper text-base font-semibold rounded-md border border-stamp hover:bg-espresso hover:border-espresso transition-colors duration-200">
+              Оставить заявку
+            </a>
+            <a href="#assortiment" class="inline-flex cursor-pointer items-center justify-center min-h-[52px] px-7 bg-transparent text-ink text-base font-semibold rounded-md border border-ink/40 hover:border-ink hover:bg-cream transition-colors duration-200">
+              Ассортимент
+            </a>
+          </div>
+        </div>
+
+        <!-- Фото: в разметке вторым, на десктопе встаёт слева, + единственный штамп -->
+        <div class="lg:col-span-5 lg:order-1 relative">
+          <figure class="reveal relative">
+            <!-- Фото: Unsplash, мешок обжаренного зерна из партии (тёплый цеховой кадр).
+                 Источник: https://images.unsplash.com/photo-1524350876685-274059332603
+                 Лицензия: Unsplash License (https://unsplash.com/license). Реквизиты автора уточнить на странице фото. -->
+            <img
+              src="https://images.unsplash.com/photo-1524350876685-274059332603?auto=format&fit=crop&w=900&q=80"
+              alt="Мешок обжаренного кофейного зерна из партии мастерской «Кварта»"
+              width="900" height="1125" loading="eager" decoding="async"
+              class="w-full h-auto object-cover rounded-lg border border-ink/25 aspect-[4/5]">
+          </figure>
+
+          <!-- Единственная печать «обжарено в четверг» -->
+          <div class="stamp-mark absolute -top-4 right-2 sm:right-6 tilt-r select-none pointer-events-none" aria-hidden="true">
+            <div class="flex flex-col items-center justify-center w-[120px] h-[120px] rounded-full border-2 border-stamp text-stamp tilt-l-s">
+              <div class="flex flex-col items-center justify-center w-[108px] h-[108px] rounded-full border border-stamp">
+                <span class="text-[10px] font-bold uppercase tracking-[0.16em]">обжарено</span>
+                <span class="font-display text-base font-bold leading-none my-1">в четверг</span>
+                <span class="text-[10px] font-semibold uppercase tracking-[0.12em]">Кварта · Минск</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       3. АССОРТИМЕНТ  ·  01
+       ══════════════════════════════════════════════════════════════════ -->
+  <section id="assortiment" class="relative paper-grain bg-cream border-b border-ink/25 scroll-mt-24" aria-labelledby="assortiment-title">
+    <div class="relative z-10 mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-10 py-14 lg:py-20">
+
+      <div class="flex items-start gap-5">
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-[0.24em] text-espresso/80">Наше кофе</p>
+          <h2 id="assortiment-title" class="mt-2 font-display font-semibold text-ink leading-[1.03]"
+              style="font-size: clamp(1.75rem, 4.6vw, 3.25rem);">
+            Что обжариваем сейчас
+          </h2>
+        </div>
+      </div>
+
+      <p class="mt-4 max-w-[60ch] text-espresso leading-relaxed">
+        Все пачки по 250 г. Нужен помол — напишите в комментарии к заявке.
+      </p>
+
+      <div class="mt-8 lg:mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-6">
+
+        <!-- Позиция 1 — Эфиопия Иргачеффе -->
+        <article class="group flex flex-col bg-paper border border-ink/25 rounded-lg overflow-hidden">
+          <!-- Фото: Unsplash, обжаренное зерно крупным планом.
+               Источник: https://images.unsplash.com/photo-1442411210769-b95c4632195e
+               Лицензия: Unsplash License. Реквизиты автора уточнить на странице фото. -->
+          <img src="https://images.unsplash.com/photo-1442411210769-b95c4632195e?auto=format&fit=crop&w=600&q=80"
+               alt="Обжаренные зёрна Эфиопии Иргачеффе крупным планом"
+               width="600" height="450" loading="lazy" decoding="async"
+               class="w-full h-auto object-cover aspect-[4/3]">
+          <div class="flex flex-col flex-1 p-5">
+            <div class="flex items-start justify-between gap-3">
+              <h3 class="font-display text-xl font-semibold text-ink leading-snug">Эфиопия Иргачеффе</h3>
+              <span class="shrink-0 text-[11px] font-bold uppercase tracking-[0.12em] text-muted border border-ink/25 rounded-full px-2.5 py-1">250 г</span>
+            </div>
+            <p class="mt-3 text-sm text-espresso leading-relaxed flex-1">Цветочный, бергамот, светлая обжарка.</p>
+            <p class="mt-4 font-display text-2xl font-semibold text-ink tnum">32 <span class="text-base font-medium text-espresso">BYN</span></p>
+            <button type="button"
+              class="js-order mt-4 inline-flex cursor-pointer items-center justify-center min-h-[44px] px-5 bg-transparent text-ink text-sm font-semibold rounded-md border border-ink/40 hover:bg-stamp hover:text-paper hover:border-stamp transition-colors duration-200"
+              data-sort="ethiopia">
+              Заказать
+            </button>
+          </div>
+        </article>
+
+        <!-- Позиция 2 — Колумбия Уила -->
+        <article class="group flex flex-col bg-paper border border-ink/25 rounded-lg overflow-hidden">
+          <!-- Фото: Unsplash, обжаренное зерно в белой чашке.
+               Источник: https://images.unsplash.com/photo-1587734195503-904fca47e0e9
+               Лицензия: Unsplash License. Реквизиты автора уточнить на странице фото. -->
+          <img src="https://images.unsplash.com/photo-1587734195503-904fca47e0e9?auto=format&fit=crop&w=600&q=80"
+               alt="Обжаренное зерно Колумбия Уила в белой чашке"
+               width="600" height="450" loading="lazy" decoding="async"
+               class="w-full h-auto object-cover aspect-[4/3]">
+          <div class="flex flex-col flex-1 p-5">
+            <div class="flex items-start justify-between gap-3">
+              <h3 class="font-display text-xl font-semibold text-ink leading-snug">Колумбия Уила</h3>
+              <span class="shrink-0 text-[11px] font-bold uppercase tracking-[0.12em] text-muted border border-ink/25 rounded-full px-2.5 py-1">250 г</span>
+            </div>
+            <p class="mt-3 text-sm text-espresso leading-relaxed flex-1">Карамель, красное яблоко.</p>
+            <p class="mt-4 font-display text-2xl font-semibold text-ink tnum">29 <span class="text-base font-medium text-espresso">BYN</span></p>
+            <button type="button"
+              class="js-order mt-4 inline-flex cursor-pointer items-center justify-center min-h-[44px] px-5 bg-transparent text-ink text-sm font-semibold rounded-md border border-ink/40 hover:bg-stamp hover:text-paper hover:border-stamp transition-colors duration-200"
+              data-sort="colombia">
+              Заказать
+            </button>
+          </div>
+        </article>
+
+        <!-- Позиция 3 — Бразилия Серрадо -->
+        <article class="group flex flex-col bg-paper border border-ink/25 rounded-lg overflow-hidden">
+          <!-- Фото: Unsplash, эспрессо в стеклянной чашке.
+               Источник: https://images.unsplash.com/photo-1610889556528-9a770e32642f
+               Лицензия: Unsplash License. Реквизиты автора уточнить на странице фото. -->
+          <img src="https://images.unsplash.com/photo-1610889556528-9a770e32642f?auto=format&fit=crop&w=600&q=80"
+               alt="Эспрессо из Бразилии Серрадо в стеклянной чашке на блюдце"
+               width="600" height="450" loading="lazy" decoding="async"
+               class="w-full h-auto object-cover aspect-[4/3]">
+          <div class="flex flex-col flex-1 p-5">
+            <div class="flex items-start justify-between gap-3">
+              <h3 class="font-display text-xl font-semibold text-ink leading-snug">Бразилия Серрадо</h3>
+              <span class="shrink-0 text-[11px] font-bold uppercase tracking-[0.12em] text-muted border border-ink/25 rounded-full px-2.5 py-1">250 г</span>
+            </div>
+            <p class="mt-3 text-sm text-espresso leading-relaxed flex-1">Орех, шоколад, под эспрессо.</p>
+            <p class="mt-4 font-display text-2xl font-semibold text-ink tnum">26 <span class="text-base font-medium text-espresso">BYN</span></p>
+            <button type="button"
+              class="js-order mt-4 inline-flex cursor-pointer items-center justify-center min-h-[44px] px-5 bg-transparent text-ink text-sm font-semibold rounded-md border border-ink/40 hover:bg-stamp hover:text-paper hover:border-stamp transition-colors duration-200"
+              data-sort="brazil">
+              Заказать
+            </button>
+          </div>
+        </article>
+
+        <!-- Позиция 4 — Дрип-пакеты -->
+        <article class="group flex flex-col bg-paper border border-ink/25 rounded-lg overflow-hidden">
+          <!-- Фото: Unsplash, заваривание через воронку (пуровер).
+               Источник: https://images.unsplash.com/photo-1470337458703-46ad1756a187
+               Лицензия: Unsplash License. Реквизиты автора уточнить на странице фото. -->
+          <img src="https://images.unsplash.com/photo-1470337458703-46ad1756a187?auto=format&fit=crop&w=600&q=80"
+               alt="Заваривание кофе через воронку: струя воды льётся в стеклянный сосуд"
+               width="600" height="450" loading="lazy" decoding="async"
+               class="w-full h-auto object-cover aspect-[4/3]">
+          <div class="flex flex-col flex-1 p-5">
+            <div class="flex items-start justify-between gap-3">
+              <h3 class="font-display text-xl font-semibold text-ink leading-snug">Дрип-пакеты, ассорти</h3>
+              <span class="shrink-0 text-[11px] font-bold uppercase tracking-[0.12em] text-muted border border-ink/25 rounded-full px-2.5 py-1">10 шт</span>
+            </div>
+            <p class="mt-3 text-sm text-espresso leading-relaxed flex-1">Завариваются в чашку кипятком.</p>
+            <p class="mt-4 font-display text-2xl font-semibold text-ink tnum">18 <span class="text-base font-medium text-espresso">BYN</span></p>
+            <button type="button"
+              class="js-order mt-4 inline-flex cursor-pointer items-center justify-center min-h-[44px] px-5 bg-transparent text-ink text-sm font-semibold rounded-md border border-ink/40 hover:bg-stamp hover:text-paper hover:border-stamp transition-colors duration-200"
+              data-sort="drip">
+              Заказать
+            </button>
+          </div>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       4. ЗАЯВКА  ·  02 — форма, режимы «заказ» и «вопрос», таблица заказа
+       ══════════════════════════════════════════════════════════════════ -->
+  <section id="zayavka" class="relative paper-grain bg-espresso text-paper border-b border-ink/25 scroll-mt-24" aria-labelledby="form-title">
+    <div class="relative z-10 mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-10 py-14 lg:py-20">
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14">
+
+        <div class="lg:col-span-5">
+          <div class="flex items-start gap-5">
+            <div>
+              <p class="text-[11px] font-bold uppercase tracking-[0.24em] text-paper/70">Заявка</p>
+              <h2 id="form-title" class="mt-2 font-display font-semibold text-paper leading-[1.03]"
+                  style="font-size: clamp(1.75rem, 4.6vw, 3rem);">
+                Оставьте заявку — перезвоним
+              </h2>
+            </div>
+          </div>
+
+          <p class="mt-5 max-w-[40ch] text-paper/85 leading-relaxed">
+            Перезвоним в ближайшее время и оформим заказ. Вы также можете подписаться.
+          </p>
+
+          <!-- Доставка — двумя строками рядом с формой -->
+          <div class="mt-4 flex flex-col items-start gap-2">
+            <p class="inline-flex items-start gap-2 bg-paper/10 border border-paper/20 rounded-md px-4 py-3 text-sm text-paper/90 leading-relaxed">
+              Развозим по Минску в пятницу
+            </p>
+            <p class="inline-flex items-start gap-2 bg-paper/10 border border-paper/20 rounded-md px-4 py-3 text-sm text-paper/90 leading-relaxed">
+              От 50 BYN — бесплатно!
+            </p>
+          </div>
+        </div>
+
+        <div class="lg:col-span-7">
+          <!-- Форма. Автоответа нет: это демонстрация состояний для макета -->
+          <form id="lead-form" class="bg-cream text-ink border border-ink/25 rounded-lg p-5 sm:p-8 max-[359px]:-mx-4 max-[359px]:rounded-none max-[359px]:p-4" novalidate>
+            <div class="space-y-6">
+
+              <!-- Имя -->
+              <div>
+                <label for="name" class="block text-sm font-semibold text-ink mb-2">
+                  Как вас зовут <span class="text-stamp-deep" aria-hidden="true">*</span>
+                </label>
+                <input type="text" id="name" name="name" autocomplete="name" required
+                  placeholder="Аня"
+                  aria-describedby="name-error"
+                  class="w-full min-h-[48px] px-4 bg-paper text-ink border border-ink/30 rounded-md placeholder:text-espresso/40 focus:border-ink transition-colors duration-200">
+                <p id="name-error" class="mt-1.5 text-xs font-semibold text-stamp-deep" role="alert" hidden>
+                  Напишите, как к вам обращаться.
+                </p>
+              </div>
+
+              <!-- Телефон -->
+              <div>
+                <label for="phone" class="block text-sm font-semibold text-ink mb-2">
+                  Телефон <span class="text-stamp-deep" aria-hidden="true">*</span>
+                </label>
+                <input type="tel" id="phone" name="phone" inputmode="tel" autocomplete="tel" required
+                  placeholder="+375 29 123-45-67"
+                  aria-describedby="phone-hint phone-error"
+                  class="w-full min-h-[48px] px-4 bg-paper text-ink border border-ink/30 rounded-md placeholder:text-espresso/40 focus:border-ink transition-colors duration-200">
+                <p id="phone-hint" class="mt-1.5 text-xs text-muted">Белорусский номер — по нему перезвоним.</p>
+                <p id="phone-error" class="mt-1.5 text-xs font-semibold text-stamp-deep" role="alert" hidden>
+                  Введите белорусский номер: +375 29 123-45-67
+                </p>
+              </div>
+
+              <!-- Что интересует: от выбора зависят поля ниже -->
+              <div>
+                <label for="interest" class="block text-sm font-semibold text-ink mb-2">
+                  Что интересует <span class="text-stamp-deep" aria-hidden="true">*</span>
+                </label>
+                <select id="interest" name="interest" required
+                  aria-controls="mode-order comment-field" aria-describedby="interest-error"
+                  class="w-full min-h-[48px] px-4 py-2 bg-paper text-ink border border-ink/30 rounded-md cursor-pointer focus:border-ink transition-colors duration-200">
+                  <option value="" disabled selected>Выберите…</option>
+                  <option value="question">У меня есть вопрос</option>
+                  <option value="order">Хочу сделать заказ</option>
+                </select>
+                <p id="interest-error" class="mt-1.5 text-xs font-semibold text-stamp-deep" role="alert" hidden>
+                  Выберите, что интересует.
+                </p>
+              </div>
+
+              <!-- Режим «заказ»: свитчер подписки, сорт кофе и таблица заказа -->
+              <div id="mode-order" class="space-y-6" hidden>
+
+                <!-- Свитчер подписки: состояние уходит в скрытое поле subscription -->
+                <div class="rounded-md border border-ink/25 bg-paper px-4 py-3">
+                  <label for="subscription-switch" class="flex items-start gap-3 cursor-pointer select-none">
+                    <input type="checkbox" id="subscription-switch" class="switch-input sr-only">
+                    <span class="switch-track relative inline-flex shrink-0 items-center w-12 h-7 mt-0.5 rounded-full border transition-colors duration-200" aria-hidden="true">
+                      <span class="switch-knob inline-block w-5 h-5 rounded-full transition-transform duration-200"></span>
+                    </span>
+                    <span>
+                      <span class="block text-sm font-semibold text-ink leading-snug">Оформить подписку — 54 BYN/мес, 2 пачки по 250 г, доставка бесплатно</span>
+                      <span class="mt-1 block text-xs text-muted">Включите, если хотите получать кофе каждый месяц</span>
+                    </span>
+                  </label>
+                </div>
+                <input type="hidden" id="subscription" name="subscription" value="false">
+
+                <!-- Сорт кофе + таблица заказа -->
+                <div>
+                  <label for="sort" class="block text-sm font-semibold text-ink mb-2">
+                    Сорт кофе <span class="text-stamp-deep" aria-hidden="true">*</span>
+                  </label>
+                  <div class="flex flex-col sm:flex-row gap-2">
+                    <select id="sort" name="sort" aria-describedby="sort-error"
+                      class="flex-1 min-w-0 min-h-[48px] px-4 py-2 bg-paper text-ink border border-ink/30 rounded-md cursor-pointer focus:border-ink transition-colors duration-200">
+                      <option value="" disabled selected>Не выбрано</option>
+                      <option value="ethiopia">Эфиопия Иргачеффе — 32 BYN</option>
+                      <option value="colombia">Колумбия Уила — 29 BYN</option>
+                      <option value="brazil">Бразилия Серрадо — 26 BYN</option>
+                      <option value="drip">Дрип-пакеты, ассорти — 18 BYN</option>
+                    </select>
+                    <button type="button" id="add-sort"
+                      class="inline-flex cursor-pointer items-center justify-center min-h-[48px] px-5 bg-transparent text-ink text-sm font-semibold rounded-md border border-ink/40 hover:bg-ink hover:text-paper hover:border-ink transition-colors duration-200">
+                      Добавить
+                    </button>
+                  </div>
+                  <p id="sort-error" class="mt-1.5 text-xs font-semibold text-stamp-deep" role="alert" hidden>
+                    Выберите сорт кофе.
+                  </p>
+
+                  <!-- Таблица заказа: пусто, пока ничего не добавлено -->
+                  <div class="mt-3" aria-live="polite">
+                    <p id="order-empty" class="text-xs text-muted">Выберите сорт и нажмите «Добавить».</p>
+                    <div id="order-box" hidden class="overflow-hidden rounded-md border border-ink/25 bg-paper">
+                      <table id="order-table" class="w-full text-sm tnum">
+                        <caption class="sr-only">Состав заказа</caption>
+                        <thead>
+                          <tr class="text-left text-[11px] uppercase tracking-[0.12em] text-muted">
+                            <th scope="col" class="font-bold px-1.5 py-2">Наименование</th>
+                            <th scope="col" class="font-bold px-1.5 py-2 text-center w-[1%] whitespace-nowrap">Кол-во</th>
+                            <th scope="col" class="font-bold px-1.5 py-2 text-right w-[1%] whitespace-nowrap">Сумма</th>
+                          </tr>
+                        </thead>
+                        <tbody id="order-rows" class="divide-y divide-ink/15"></tbody>
+                        <tfoot>
+                          <tr class="border-t-2 border-ink/30">
+                            <td class="px-1.5 py-3 font-semibold text-ink">Итого</td>
+                            <td class="px-1.5 py-3"></td>
+                            <td class="px-1.5 py-3 text-right font-semibold text-ink whitespace-nowrap"><span id="order-total">0</span> BYN</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+
+                  <input type="hidden" id="sorts" name="sorts" value="">
+                </div>
+              </div>
+
+              <!-- Комментарий: в режиме заказа необязателен, в режиме вопроса обязателен -->
+              <div id="comment-field">
+                <label for="comment" class="block text-sm font-semibold text-ink mb-2">
+                  <span id="comment-label">Комментарий</span> <span id="comment-required" class="text-stamp-deep" aria-hidden="true" hidden>*</span>
+                </label>
+                <textarea id="comment" name="comment" rows="3"
+                  placeholder="Например: помол под воронку, привезти в офис"
+                  aria-describedby="comment-hint comment-question-hint comment-error"
+                  class="w-full px-4 py-3 bg-paper text-ink border border-ink/30 rounded-md placeholder:text-espresso/40 focus:border-ink transition-colors duration-200 resize-y"></textarea>
+                <p id="comment-hint" class="mt-1.5 text-xs text-muted">Необязательно: помол, адрес, пожелания.</p>
+                <p id="comment-question-hint" class="mt-1.5 text-xs text-muted" hidden>Напишите вопрос — перезвоним и ответим.</p>
+                <p id="comment-error" class="mt-1.5 text-xs font-semibold text-stamp-deep" role="alert" hidden>
+                  Напишите вопрос.
+                </p>
+              </div>
+
+              <!-- Кнопка отправки -->
+              <div class="pt-1">
+                <button type="submit" id="submit-btn"
+                  class="inline-flex w-full sm:w-auto cursor-pointer items-center justify-center min-h-[52px] px-8 bg-stamp text-paper text-base font-semibold rounded-md border border-stamp hover:bg-espresso hover:border-espresso disabled:opacity-60 disabled:cursor-not-allowed transition-colors duration-200">
+                  Отправить заявку
+                </button>
+              </div>
+            </div>
+
+            <!-- Статус отправки: заполняется скриптом демонстрации -->
+            <div id="form-status" class="mt-6" aria-live="polite"></div>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       5. КОНТАКТЫ  ·  03 — карта, адрес, часы, телефон и соцсети
+       ══════════════════════════════════════════════════════════════════ -->
+  <section id="kontakty" class="relative paper-grain bg-cream scroll-mt-24" aria-labelledby="kontakty-title">
+    <div class="relative z-10 mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-10 py-14 lg:py-20">
+
+      <div class="flex items-start gap-5">
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-[0.24em] text-espresso/80">Контакты</p>
+          <h2 id="kontakty-title" class="mt-2 font-display font-semibold text-ink leading-[1.03]"
+              style="font-size: clamp(1.75rem, 4.6vw, 3.25rem);">
+            Как нас найти
+          </h2>
+        </div>
+      </div>
+
+      <div class="mt-8 lg:mt-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
+
+        <!-- Карта -->
+        <div class="lg:col-span-7">
+          <iframe
+            src="https://yandex.by/map-widget/v1/?text=%D0%9C%D0%B8%D0%BD%D1%81%D0%BA%2C%20%D1%83%D0%BB%D0%B8%D1%86%D0%B0%20%D0%9A%D0%BE%D1%80%D0%BE%D0%BB%D1%8F%209&amp;z=17"
+            class="w-full h-[300px] sm:h-[420px] rounded-lg border border-ink/25 bg-paper"
+            loading="lazy" title="Яндекс.Карта: Минск, улица Короля, 9"
+            referrerpolicy="no-referrer-when-downgrade"></iframe>
+
+          <!-- Запасной путь, если iframe не загрузился -->
+          <a href="https://yandex.by/maps/?text=%D0%9C%D0%B8%D0%BD%D1%81%D0%BA%2C%20%D1%83%D0%BB%D0%B8%D1%86%D0%B0%20%D0%9A%D0%BE%D1%80%D0%BE%D0%BB%D1%8F%209"
+             target="_blank" rel="noopener noreferrer"
+             class="group mt-4 flex cursor-pointer items-center justify-between gap-4 bg-espresso text-paper rounded-lg px-5 py-4 min-h-[64px] hover:bg-ink transition-colors duration-200">
+            <span>
+              <span class="block text-[11px] font-bold uppercase tracking-[0.18em] text-paper/70">Открыть в Яндекс.Картах</span>
+              <span class="block mt-1 font-display text-lg font-semibold">Минск, ул. Короля, 9</span>
+            </span>
+          </a>
+        </div>
+
+        <!-- Адрес, часы, телефон, соцсети -->
+        <div class="lg:col-span-5">
+          <dl class="bg-paper border border-ink/25 rounded-lg p-6 space-y-5">
+            <div>
+              <dt class="text-[11px] font-bold uppercase tracking-[0.18em] text-muted">Адрес</dt>
+              <dd class="mt-1 text-ink leading-relaxed">Минск, ул. Короля, 9</dd>
+            </div>
+            <div>
+              <dt class="text-[11px] font-bold uppercase tracking-[0.18em] text-muted">Часы работы</dt>
+              <dd class="mt-1 text-ink leading-relaxed tnum">пн–пт 8:00–20:00 · сб–вс 10:00–18:00</dd>
+            </div>
+            <div>
+              <dt class="text-[11px] font-bold uppercase tracking-[0.18em] text-muted">Телефон</dt>
+              <dd class="mt-1">
+                <a href="tel:+375291234567" class="cursor-pointer text-ink underline decoration-stamp/50 decoration-2 underline-offset-4 hover:decoration-stamp transition-colors duration-200">+375 29 123-45-67</a>
+              </dd>
+            </div>
+            <div>
+              <dt class="text-[11px] font-bold uppercase tracking-[0.18em] text-muted">Почта и соцсети</dt>
+              <dd class="mt-1 space-y-2 text-[15px]">
+                <span class="block"><a href="mailto:hello@kvarta.by" class="cursor-pointer text-ink underline decoration-stamp/50 underline-offset-4 hover:decoration-stamp transition-colors duration-200">hello@kvarta.by</a></span>
+                <span class="block"><a href="https://t.me/kvarta_minsk" target="_blank" rel="noopener noreferrer" class="cursor-pointer text-ink underline decoration-stamp/50 underline-offset-4 hover:decoration-stamp transition-colors duration-200">Telegram: @kvarta_minsk</a></span>
+                <span class="block"><a href="https://instagram.com/kvarta.minsk" target="_blank" rel="noopener noreferrer" class="cursor-pointer text-ink underline decoration-stamp/50 underline-offset-4 hover:decoration-stamp transition-colors duration-200">Instagram: @kvarta.minsk</a></span>
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     FOOTER — без повторов адреса и часов
+     ════════════════════════════════════════════════════════════════════ -->
+<footer class="relative paper-grain bg-espresso text-paper">
+  <div class="relative z-10 mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-10 py-12 lg:py-16">
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+      <div class="lg:col-span-7">
+        <p class="font-display text-3xl font-bold tracking-[0.14em] text-paper">КВАРТА</p>
+        <p class="mt-4 text-paper/70 leading-relaxed max-w-[38ch]">
+          Маленькая обжарка в Минске. Обжариваем по четвергам, развозим по пятницам.
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-10 pt-6 border-t border-paper/15 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-paper/60">
+      <p>ИП «Кварта», УНП 000000000, г. Минск.</p>
+      <p>© <span id="year">2026</span> Кварта. Все цены в белорусских рублях.</p>
+    </div>
+  </div>
+</footer>
+
+<!-- Sticky CTA на мобильных: появляется после прокрутки первого экрана -->
+<a href="#zayavka" id="sticky-cta"
+   class="lg:hidden fixed bottom-4 left-4 right-4 z-40 flex cursor-pointer items-center justify-center min-h-[52px] bg-stamp text-paper font-semibold rounded-md border border-stamp shadow-lift opacity-0 translate-y-3 pointer-events-none transition-[opacity,transform] duration-300">
+  Оставить заявку
+</a>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ── 1. Год в подвале ───────────────────────────────────────────── */
+  var yearEl = document.getElementById("year");
+  if (yearEl) yearEl.textContent = String(new Date().getFullYear());
+
+  /* ── 2. Ближайший четверг: подставляем дату в hero ───────────────── */
+  function nextThursday(from) {
+    var d = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+    // getDay(): 0 = вс, 4 = чт. Ближайший четверг (сегодня тоже считаем).
+    var diff = (4 - d.getDay() + 7) % 7;
+    d.setDate(d.getDate() + diff);
+    return d;
+  }
+  var MONTHS = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+  var roastEl = document.querySelector("[data-roast-date]");
+  if (roastEl) {
+    var t = nextThursday(new Date());
+    roastEl.textContent = "четверг, " + t.getDate() + " " + MONTHS[t.getMonth()];
+  }
+
+  /* ── 3. Мобильное меню ──────────────────────────────────────────── */
+  var toggle = document.getElementById("menu-toggle");
+  var menu = document.getElementById("mobile-menu");
+  function closeMenu() {
+    if (!menu || !toggle) return;
+    menu.hidden = true;
+    toggle.setAttribute("aria-expanded", "false");
+    toggle.setAttribute("aria-label", "Открыть меню");
+  }
+  if (toggle && menu) {
+    toggle.addEventListener("click", function () {
+      var open = menu.hidden;
+      menu.hidden = !open;
+      toggle.setAttribute("aria-expanded", String(open));
+      toggle.setAttribute("aria-label", open ? "Закрыть меню" : "Открыть меню");
+    });
+    Array.prototype.forEach.call(menu.querySelectorAll("[data-menu-close]"), function (a) {
+      a.addEventListener("click", closeMenu);
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") closeMenu();
+    });
+  }
+
+  /* ── 4. Sticky CTA: показываем после первого экрана ─────────────── */
+  var sticky = document.getElementById("sticky-cta");
+  if (sticky) {
+    var onScroll = function () {
+      var show = window.scrollY > window.innerHeight * 0.7;
+      sticky.style.opacity = show ? "1" : "0";
+      sticky.style.transform = show ? "none" : "translateY(0.75rem)";
+      sticky.style.pointerEvents = show ? "auto" : "none";
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+  }
+
+  /* ── 5. Форма: ссылки на элементы ───────────────────────────────── */
+  var form = document.getElementById("lead-form");
+  var status = document.getElementById("form-status");
+  var submitBtn = document.getElementById("submit-btn");
+  var nameInput = document.getElementById("name");
+  var nameError = document.getElementById("name-error");
+  var phoneInput = document.getElementById("phone");
+  var phoneError = document.getElementById("phone-error");
+  var interestSelect = document.getElementById("interest");
+  var interestError = document.getElementById("interest-error");
+  var sortSelect = document.getElementById("sort");
+  var sortError = document.getElementById("sort-error");
+  var addSortBtn = document.getElementById("add-sort");
+  var orderRows = document.getElementById("order-rows");
+  var orderTotal = document.getElementById("order-total");
+  var orderBox = document.getElementById("order-box");
+  var orderEmpty = document.getElementById("order-empty");
+  var sortsHidden = document.getElementById("sorts");
+  var subscriptionSwitch = document.getElementById("subscription-switch");
+  var subscriptionHidden = document.getElementById("subscription");
+  var modeOrder = document.getElementById("mode-order");
+  var commentInput = document.getElementById("comment");
+  var commentError = document.getElementById("comment-error");
+  var commentHint = document.getElementById("comment-hint");
+  var commentQuestionHint = document.getElementById("comment-question-hint");
+  var commentRequiredMark = document.getElementById("comment-required");
+  var commentLabel = document.getElementById("comment-label");
+
+  /* ── 6. Заказ: таблица сортов ──────────────────────────────────────
+     Строк максимум четыре — по одной на продукт. Повторное добавление
+     того же сорта увеличивает количество, а не создаёт новую строку. */
+  var PRODUCTS = {
+    ethiopia: { name: "Эфиопия Иргачеффе",   price: 32 },
+    colombia: { name: "Колумбия Уила",        price: 29 },
+    brazil:   { name: "Бразилия Серрадо",     price: 26 },
+    drip:     { name: "Дрип-пакеты, ассорти", price: 18 }
+  };
+  var MAX_QTY = 10;
+  var order = [];
+
+  function findItem(slug) {
+    for (var i = 0; i < order.length; i++) {
+      if (order[i].slug === slug) return order[i];
+    }
+    return null;
+  }
+
+  function qtyButton(label, extraClass, disabled) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "inline-flex items-center justify-center w-6 h-9 text-base " + extraClass +
+      " transition-colors duration-200 " +
+      (disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer hover:bg-ink hover:text-paper");
+    btn.textContent = label;
+    if (disabled) btn.disabled = true;
+    return btn;
+  }
+
+  function renderOrder() {
+    if (!orderRows) return;
+    orderRows.innerHTML = "";
+    var total = 0;
+
+    order.forEach(function (item) {
+      var product = PRODUCTS[item.slug];
+      if (!product) return;
+      var sum = product.price * item.qty;
+      total += sum;
+
+      var tr = document.createElement("tr");
+
+      // Наименование + кнопка удаления строки
+      var tdName = document.createElement("td");
+      tdName.className = "px-1.5 py-2.5 align-middle";
+      var nameRow = document.createElement("div");
+      nameRow.className = "flex items-start justify-between gap-2";
+      var name = document.createElement("span");
+      name.className = "text-ink leading-snug";
+      name.textContent = product.name;
+      var del = document.createElement("button");
+      del.type = "button";
+      del.className = "shrink-0 inline-flex cursor-pointer items-center justify-center w-6 h-6 -mt-0.5 rounded-md text-espresso hover:bg-stamp hover:text-paper transition-colors duration-200";
+      del.setAttribute("aria-label", "Удалить: " + product.name);
+      del.textContent = "\u00D7";
+      del.addEventListener("click", function () { removeProduct(item.slug); });
+      nameRow.appendChild(name);
+      nameRow.appendChild(del);
+      tdName.appendChild(nameRow);
+      tr.appendChild(tdName);
+
+      // Количество: − число +
+      var tdQty = document.createElement("td");
+      tdQty.className = "px-1.5 py-2.5 align-middle";
+      var stepper = document.createElement("div");
+      stepper.className = "inline-flex items-center overflow-hidden rounded-md border border-ink/30 bg-paper";
+      var minus = qtyButton("\u2212", "rounded-l-md", item.qty <= 1);
+      minus.setAttribute("aria-label", "Уменьшить количество: " + product.name);
+      minus.addEventListener("click", function () { changeQty(item.slug, -1); });
+      var num = document.createElement("span");
+      num.className = "w-5 text-center text-sm text-ink tnum";
+      num.textContent = String(item.qty);
+      var plus = qtyButton("+", "rounded-r-md", item.qty >= MAX_QTY);
+      plus.setAttribute("aria-label", "Увеличить количество: " + product.name);
+      plus.addEventListener("click", function () { changeQty(item.slug, 1); });
+      stepper.appendChild(minus);
+      stepper.appendChild(num);
+      stepper.appendChild(plus);
+      tdQty.appendChild(stepper);
+      tr.appendChild(tdQty);
+
+      // Сумма строки
+      var tdSum = document.createElement("td");
+      tdSum.className = "px-1.5 py-2.5 text-right align-middle whitespace-nowrap text-ink";
+      tdSum.textContent = sum + " BYN";
+      tr.appendChild(tdSum);
+
+      orderRows.appendChild(tr);
+    });
+
+    if (orderTotal) orderTotal.textContent = String(total);
+    if (orderBox) orderBox.hidden = order.length === 0;
+    if (orderEmpty) orderEmpty.hidden = order.length > 0;
+    if (sortsHidden) {
+      sortsHidden.value = order.map(function (item) {
+        return item.slug + ":" + item.qty;
+      }).join(",");
+    }
+  }
+
+  function addProduct(slug) {
+    if (!slug || !PRODUCTS[slug]) return;
+    var item = findItem(slug);
+    if (item) {
+      if (item.qty < MAX_QTY) item.qty += 1;
+    } else {
+      order.push({ slug: slug, qty: 1 });
+    }
+    renderOrder();
+  }
+
+  function removeProduct(slug) {
+    order = order.filter(function (item) { return item.slug !== slug; });
+    renderOrder();
+  }
+
+  function changeQty(slug, delta) {
+    var item = findItem(slug);
+    if (!item) return;
+    var next = item.qty + delta;
+    if (next < 1) next = 1;
+    if (next > MAX_QTY) next = MAX_QTY;
+    item.qty = next;
+    renderOrder();
+  }
+
+  renderOrder();
+
+  if (addSortBtn && sortSelect) {
+    addSortBtn.addEventListener("click", function () {
+      if (!sortSelect.value) { sortSelect.focus(); return; }
+      addProduct(sortSelect.value);
+    });
+  }
+
+  /* ── 7. Режимы формы: «заказ» и «вопрос» ─────────────────────────── */
+  function updateMode() {
+    var mode = interestSelect ? interestSelect.value : "";
+    var isOrder = mode === "order";
+    var isQuestion = mode === "question";
+
+    // Режим «заказ»: свитчер, сорт и таблица
+    if (modeOrder) modeOrder.hidden = !isOrder;
+
+    // Обязательность не висит на скрытых полях
+    if (sortSelect) {
+      sortSelect.required = isOrder;
+      if (!isOrder) sortSelect.removeAttribute("aria-invalid");
+    }
+    if (!isOrder && sortError) sortError.hidden = true;
+
+    // Комментарий: необязателен в заказе, обязателен в вопросе
+    if (commentInput) commentInput.required = isQuestion;
+    if (commentRequiredMark) commentRequiredMark.hidden = !isQuestion;
+    if (commentHint) commentHint.hidden = isQuestion;
+    if (commentQuestionHint) commentQuestionHint.hidden = !isQuestion;
+    if (commentLabel) commentLabel.textContent = isQuestion ? "Вопрос" : "Комментарий";
+    if (!isQuestion) {
+      if (commentError) commentError.hidden = true;
+      if (commentInput) commentInput.removeAttribute("aria-invalid");
+    }
+
+    // Переход к вопросу: данные заказа не должны попасть в заявку
+    if (isQuestion) {
+      order = [];
+      renderOrder();
+      setSubscription(false);
+      if (sortSelect) sortSelect.value = "";
+    }
+  }
+
+  /* ── 8. Свитчер подписки ─────────────────────────────────────────── */
+  function setSubscription(on) {
+    if (subscriptionSwitch) subscriptionSwitch.checked = !!on;
+    if (subscriptionHidden) subscriptionHidden.value = on ? "true" : "false";
+  }
+  if (subscriptionSwitch) {
+    subscriptionSwitch.addEventListener("change", function () {
+      if (subscriptionHidden) subscriptionHidden.value = subscriptionSwitch.checked ? "true" : "false";
+    });
+  }
+  if (interestSelect) {
+    interestSelect.addEventListener("change", updateMode);
+  }
+
+  /* ── 9. Кнопки «Заказать» ────────────────────────────────────────── */
+  function setInterest(value) {
+    if (interestSelect) interestSelect.value = value;
+    updateMode();
+  }
+  function goToForm() {
+    if (!form) return;
+    form.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (nameInput) window.setTimeout(function () { nameInput.focus({ preventScroll: true }); }, 350);
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll(".js-order"), function (btn) {
+    btn.addEventListener("click", function () {
+      var slug = btn.getAttribute("data-sort") || "";
+      setInterest("order");
+      if (sortSelect && slug) sortSelect.value = slug;
+      addProduct(slug);
+      goToForm();
+    });
+  });
+
+
+  updateMode();
+
+  /* ── 10. Валидация и демонстрация состояний формы ───────────────────
+     Валидация белорусского номера, обязательные интерес и сорт,
+     успех и дубликат. Реального запроса нет — это макет. */
+  function normalizeBY(raw) {
+    var digits = String(raw || "").replace(/\D/g, "");
+    if (digits.indexOf("375") === 0) digits = digits.slice(3);
+    else if (digits.indexOf("80") === 0) digits = digits.slice(2);
+    return digits; // ожидаем 9 цифр: код (2) + 7
+  }
+  function isValidBY(raw) {
+    return /^(17|25|29|33|44)\d{7}$/.test(normalizeBY(raw));
+  }
+
+  var sentPhones = {};
+
+  function clearStatus() { if (status) status.innerHTML = ""; }
+
+  function showPanel(kind, title, text) {
+    if (!status) return;
+    var palette = {
+      success: "border-olive/50 bg-olive/10",
+      duplicate: "border-ink/40 bg-ink/5",
+      error: "border-stamp-deep/60 bg-stamp/10"
+    };
+    var retry = kind === "error"
+      ? '<button type="button" id="retry-btn" class="mt-3 inline-flex cursor-pointer items-center justify-center min-h-[44px] px-5 bg-transparent text-ink text-sm font-semibold rounded-md border border-ink/50 hover:bg-ink hover:text-paper transition-colors duration-200">Попробовать ещё раз</button>'
+      : "";
+    var contacts = kind === "error"
+      ? '<p class="mt-2 text-xs text-espresso/80">Если не получится — позвоните: <a class="underline decoration-stamp/60 underline-offset-4" href="tel:+375291234567">+375 29 123-45-67</a> или напишите на <a class="underline decoration-stamp/60 underline-offset-4" href="mailto:hello@kvarta.by">hello@kvarta.by</a>.</p>'
+      : "";
+    status.innerHTML =
+      '<div class="border rounded-md px-4 py-3 ' + palette[kind] + '" role="status">' +
+        '<p class="font-semibold text-ink">' + title + '</p>' +
+        '<p class="mt-1 text-sm text-espresso">' + text + '</p>' +
+        retry + contacts +
+      '</div>';
+    var retryBtn = document.getElementById("retry-btn");
+    if (retryBtn) retryBtn.addEventListener("click", function () { clearStatus(); if (submitBtn) submitBtn.focus(); });
+  }
+
+  function setSending(on) {
+    if (!submitBtn) return;
+    submitBtn.disabled = on;
+    submitBtn.textContent = on ? "Отправляем…" : "Отправить заявку";
+  }
+
+  if (form) {
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      // Сброс видимых ошибок
+      if (nameError) nameError.hidden = true;
+      if (phoneError) phoneError.hidden = true;
+      if (interestError) interestError.hidden = true;
+      if (sortError) sortError.hidden = true;
+      if (commentError) commentError.hidden = true;
+      [nameInput, phoneInput, interestSelect, sortSelect, commentInput].forEach(function (el) {
+        if (el) el.removeAttribute("aria-invalid");
+      });
+      clearStatus();
+
+      var nameVal = nameInput ? nameInput.value.trim() : "";
+      var phoneVal = phoneInput ? phoneInput.value.trim() : "";
+      var interestVal = interestSelect ? interestSelect.value : "";
+      var sortVal = sortSelect ? sortSelect.value : "";
+      var commentVal = commentInput ? commentInput.value.trim() : "";
+      var ok = true;
+      var firstBad = null;
+
+      if (nameVal === "") {
+        ok = false;
+        if (nameInput) nameInput.setAttribute("aria-invalid", "true");
+        if (nameError) nameError.hidden = false;
+        firstBad = firstBad || nameInput;
+      }
+      if (!isValidBY(phoneVal)) {
+        ok = false;
+        if (phoneInput) phoneInput.setAttribute("aria-invalid", "true");
+        if (phoneError) phoneError.hidden = false;
+        firstBad = firstBad || phoneInput;
+      }
+      if (interestVal === "") {
+        ok = false;
+        if (interestSelect) interestSelect.setAttribute("aria-invalid", "true");
+        if (interestError) interestError.hidden = false;
+        firstBad = firstBad || interestSelect;
+      }
+      // Режим «заказ»: нужен сорт в селекте ИЛИ хотя бы одна строка в таблице
+      if (interestVal === "order" && sortVal === "" && order.length === 0) {
+        ok = false;
+        if (sortSelect) sortSelect.setAttribute("aria-invalid", "true");
+        if (sortError) sortError.hidden = false;
+        firstBad = firstBad || sortSelect;
+      }
+      // Режим «вопрос»: нужен непустой комментарий
+      if (interestVal === "question" && commentVal === "") {
+        ok = false;
+        if (commentInput) commentInput.setAttribute("aria-invalid", "true");
+        if (commentError) commentError.hidden = false;
+        firstBad = firstBad || commentInput;
+      }
+      if (!ok) {
+        if (firstBad) firstBad.focus();
+        return;
+      }
+
+      // Имитация сетевого запроса
+      setSending(true);
+      window.setTimeout(function () {
+        setSending(false);
+        if (sentPhones[normalizeBY(phoneVal)]) {
+          showPanel("duplicate", "Заявка уже принята",
+            "Мы уже получили заявку с этого номера и скоро перезвоним.");
+          return;
+        }
+        sentPhones[normalizeBY(phoneVal)] = true;
+        showPanel("success", "Заявка принята — перезвоним",
+          "Спасибо, " + nameVal + ". Перезвоним в рабочее время.");
+        form.reset();
+        order = [];
+        renderOrder();
+        setSubscription(false);
+        updateMode();
+      }, 700);
+    });
+  }
+
+  /* ── 11. Появление блоков при прокрутке ──────────────────────────── */
+  var reveals = document.querySelectorAll(".reveal");
+  if ("IntersectionObserver" in window && reveals.length) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-in");
+          io.unobserve(entry.target);
+        }
+      });
+    }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
+    Array.prototype.forEach.call(reveals, function (el) { io.observe(el); });
+  } else {
+    Array.prototype.forEach.call(reveals, function (el) { el.classList.add("is-in"); });
+  }
+})();
+</script>
+</body>
+</html>

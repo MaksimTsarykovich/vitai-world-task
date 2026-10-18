@@ -1,0 +1,1470 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Кварта — дизайн-система и состояния</title>
+<meta name="description" content="Токены, типографическая шкала, элементы и состояния формы для лендинга обжарки «Кварта».">
+<meta name="theme-color" content="#3B2A20">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;0,7..72,600;0,7..72,700;1,7..72,400&family=Manrope:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+<style type="text/tailwindcss">
+  /* Те же токены, что и на лендинге: имена совпадают с палитрой брифа */
+  @theme {
+    --color-paper: #F2EBDD;
+    --color-cream: #E4D8C3;
+    --color-ink: #221A15;
+    --color-espresso: #3B2A20;
+    --color-stamp: #B4452F;
+    --color-stamp-deep: #9E3A25;   /* мелкий красный текст: AA на cream и paper */
+    --color-muted: #655547;        /* мелкие подписи и подсказки: 5.06:1 на cream, 6.01:1 на paper */
+    --color-olive: #6F7459;
+
+    --font-display: "Literata", Georgia, "Times New Roman", serif;
+    --font-sans: "Manrope", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+    --radius-none: 0px;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+
+    --shadow-bar: 0 6px 20px color-mix(in srgb, var(--color-ink) 22%, transparent);
+  }
+</style>
+
+<style>
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+  body { overflow-x: hidden; text-rendering: optimizeLegibility; }
+
+  /* Курсор: кликабельное — «рука», недоступное — запрещающий */
+  a, button, select, summary, label[for],
+  input[type="radio"], input[type="checkbox"] { cursor: pointer; }
+  button:disabled, select:disabled, input:disabled,
+  [aria-disabled="true"] { cursor: not-allowed; }
+
+  .paper-grain { position: relative; }
+  .paper-grain::before {
+    content: "";
+    position: absolute; inset: 0; pointer-events: none; z-index: 0; opacity: .06;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  :focus-visible { outline: 2px solid var(--color-stamp); outline-offset: 2px; border-radius: 4px; }
+
+  /* Имитация состояния фокуса для витрины (клавиатурой на статичный макет не навести) */
+  .demo-focus { outline: 2px solid var(--color-stamp); outline-offset: 2px; }
+
+  /* Штамп-печать: полустёртая текстура */
+  .stamp-mark {
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0.6 0.6 0 0.55'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23m)'/%3E%3C/svg%3E");
+            mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.6 0.6 0.6 0 0.55'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23m)'/%3E%3C/svg%3E");
+    -webkit-mask-mode: luminosity; mask-mode: luminosity;
+  }
+
+  /* Номер секции — заметная контурная цифра, честно декоративная (aria-hidden в разметке) */
+  .section-num { -webkit-text-stroke: 2px var(--color-olive); color: transparent; letter-spacing: -.03em; }
+
+  .rule-dotted {
+    height: 1px;
+    background-image: radial-gradient(circle, var(--color-ink) 1px, transparent 1.2px);
+    background-size: 7px 1px; background-repeat: repeat-x; opacity: .35;
+  }
+  .tnum { font-variant-numeric: tabular-nums; }
+  .perforated {
+    background-image: radial-gradient(circle at 6px 50%, var(--color-paper) 3px, transparent 3.5px);
+    background-size: 12px 100%; background-repeat: repeat-y;
+  }
+
+  /* Свитчер подписки: скрытый чекбокс + видимая дорожка, работает и мышью, и клавиатурой */
+  .switch-track {
+    background-color: var(--color-paper);
+    border-color: color-mix(in srgb, var(--color-ink) 40%, transparent);
+  }
+  .switch-knob {
+    background-color: var(--color-ink);
+    transform: translateX(0.25rem);
+  }
+  .switch-input:checked ~ .switch-track {
+    background-color: var(--color-stamp);
+    border-color: var(--color-stamp);
+  }
+  .switch-input:checked ~ .switch-track .switch-knob {
+    background-color: var(--color-paper);
+    transform: translateX(1.5rem);
+  }
+  .switch-input:focus-visible ~ .switch-track {
+    outline: 2px solid var(--color-stamp);
+    outline-offset: 2px;
+  }
+  .switch-input:disabled ~ .switch-track { opacity: .6; cursor: not-allowed; }
+
+  /* Валидация: подсветка неверного поля */
+  [aria-invalid="true"] { border-color: var(--color-stamp-deep); box-shadow: inset 0 0 0 1px var(--color-stamp-deep); }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+  }
+</style>
+</head>
+
+<body class="font-sans bg-paper text-ink antialiased selection:bg-stamp selection:text-paper">
+
+<!-- Липкая тёмная шапка — как на лендинге -->
+<header class="sticky top-0 z-40 bg-espresso text-paper border-b border-ink shadow-bar">
+  <div class="mx-auto max-w-[1180px] px-4 sm:px-6 lg:px-10 flex items-center justify-between h-16">
+    <a href="#top" class="cursor-pointer font-display text-xl font-bold tracking-[0.14em] text-paper hover:text-cream transition-colors duration-200">КВАРТА</a>
+    <span class="text-[11px] font-bold uppercase tracking-[0.2em] text-paper/70">Дизайн-система</span>
+    <a href="index.html" class="hidden sm:inline-flex cursor-pointer items-center min-h-[40px] px-4 text-sm font-semibold text-paper border border-paper/40 rounded-md hover:bg-ink/40 transition-colors duration-200">К лендингу</a>
+  </div>
+</header>
+
+<main id="top" class="paper-grain">
+  <div class="relative z-10 mx-auto max-w-[1180px] px-4 sm:px-6 lg:px-10 py-12 lg:py-16">
+
+    <!-- Шапка -->
+    <p class="text-[11px] font-bold uppercase tracking-[0.24em] text-espresso/80">Направление — «Печатный цех обжарки»</p>
+    <h1 class="mt-4 font-display font-bold text-ink leading-[0.98]" style="font-size: clamp(2rem, 6vw, 3.75rem);">
+      Токены, шкала и состояния формы
+    </h1>
+    <p class="mt-5 max-w-[62ch] text-espresso text-base sm:text-lg leading-relaxed">
+      Справочник для переноса макета в Next.js: палитра, типографика, элементы управления,
+      оба селекта, свитчер подписки, таблица заказа и все состояния формы.
+    </p>
+
+    <!-- Оглавление -->
+    <nav class="mt-8 flex flex-wrap gap-2" aria-label="Разделы дизайн-системы">
+      <a href="#palette" class="min-h-[40px] inline-flex items-center px-4 text-sm font-medium bg-cream border border-ink/25 rounded-md cursor-pointer hover:border-ink transition-colors duration-200">01 · Палитра</a>
+      <a href="#type" class="min-h-[40px] inline-flex items-center px-4 text-sm font-medium bg-cream border border-ink/25 rounded-md cursor-pointer hover:border-ink transition-colors duration-200">02 · Типографика</a>
+      <a href="#controls" class="min-h-[40px] inline-flex items-center px-4 text-sm font-medium bg-cream border border-ink/25 rounded-md cursor-pointer hover:border-ink transition-colors duration-200">03 · Кнопки и поля</a>
+      <a href="#states" class="min-h-[40px] inline-flex items-center px-4 text-sm font-medium bg-cream border border-ink/25 rounded-md cursor-pointer hover:border-ink transition-colors duration-200">04 · Состояния формы</a>
+      <a href="#order" class="min-h-[40px] inline-flex items-center px-4 text-sm font-medium bg-cream border border-ink/25 rounded-md cursor-pointer hover:border-ink transition-colors duration-200">05 · Таблица заказа</a>
+      <a href="#blocks" class="min-h-[40px] inline-flex items-center px-4 text-sm font-medium bg-cream border border-ink/25 rounded-md cursor-pointer hover:border-ink transition-colors duration-200">06 · Повторяемые элементы</a>
+    </nav>
+
+    <!-- ───────────────────────────── ПАЛИТРА ───────────────────────────── -->
+    <section id="palette" class="mt-14 scroll-mt-20" aria-labelledby="palette-title">
+      <div class="flex items-start gap-4">
+        <p class="font-display text-4xl lg:text-5xl section-num leading-none" aria-hidden="true">01</p>
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-[0.24em] text-espresso/80">Палитра</p>
+          <h2 id="palette-title" class="mt-2 font-display font-semibold text-ink text-2xl sm:text-3xl">Восемь токенов и их роли</h2>
+        </div>
+      </div>
+
+      <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <!-- paper -->
+        <article class="border border-ink/25 rounded-lg overflow-hidden">
+          <div class="bg-paper p-6 h-28 flex items-end border-b border-ink/15">
+            <span class="font-display text-lg font-semibold text-ink">Aa</span>
+          </div>
+          <div class="p-5">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="font-mono text-sm font-medium text-ink">--color-paper</h3>
+              <span class="font-mono text-xs text-espresso/80">#F2EBDD</span>
+            </div>
+            <p class="mt-2 text-sm text-espresso leading-relaxed">Основной фон: тёплая бумага, задаёт цеховой тон.</p>
+          </div>
+        </article>
+
+        <!-- cream -->
+        <article class="border border-ink/25 rounded-lg overflow-hidden">
+          <div class="bg-cream p-6 h-28 flex items-end border-b border-ink/15">
+            <span class="font-display text-lg font-semibold text-ink">Aa</span>
+          </div>
+          <div class="p-5">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="font-mono text-sm font-medium text-ink">--color-cream</h3>
+              <span class="font-mono text-xs text-espresso/80">#E4D8C3</span>
+            </div>
+            <p class="mt-2 text-sm text-espresso leading-relaxed">Подложки, карточки, поля формы.</p>
+          </div>
+        </article>
+
+        <!-- ink -->
+        <article class="border border-ink/25 rounded-lg overflow-hidden">
+          <div class="bg-ink p-6 h-28 flex items-end border-b border-ink/15">
+            <span class="font-display text-lg font-semibold text-paper">Aa</span>
+          </div>
+          <div class="p-5">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="font-mono text-sm font-medium text-ink">--color-ink</h3>
+              <span class="font-mono text-xs text-espresso/80">#221A15</span>
+            </div>
+            <p class="mt-2 text-sm text-espresso leading-relaxed">Основной текст и тонкие линии.</p>
+          </div>
+        </article>
+
+        <!-- espresso -->
+        <article class="border border-ink/25 rounded-lg overflow-hidden">
+          <div class="bg-espresso p-6 h-28 flex items-end border-b border-ink/15">
+            <span class="font-display text-lg font-semibold text-paper">Aa</span>
+          </div>
+          <div class="p-5">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="font-mono text-sm font-medium text-ink">--color-espresso</h3>
+              <span class="font-mono text-xs text-espresso/80">#3B2A20</span>
+            </div>
+            <p class="mt-2 text-sm text-espresso leading-relaxed">Липкая шапка, подписка, подвал.</p>
+          </div>
+        </article>
+
+        <!-- stamp -->
+        <article class="border border-ink/25 rounded-lg overflow-hidden">
+          <div class="bg-stamp p-6 h-28 flex items-end border-b border-ink/15">
+            <span class="font-display text-lg font-semibold text-paper">Aa</span>
+          </div>
+          <div class="p-5">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="font-mono text-sm font-medium text-ink">--color-stamp</h3>
+              <span class="font-mono text-xs text-espresso/80">#B4452F</span>
+            </div>
+            <p class="mt-2 text-sm text-espresso leading-relaxed">Акцент действия: кнопки, штамп, свитчер во включённом виде.</p>
+          </div>
+        </article>
+
+        <!-- stamp-deep -->
+        <article class="border border-ink/25 rounded-lg overflow-hidden">
+          <div class="bg-stamp-deep p-6 h-28 flex items-end border-b border-ink/15">
+            <span class="font-display text-lg font-semibold text-paper">Aa</span>
+          </div>
+          <div class="p-5">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="font-mono text-sm font-medium text-ink">--color-stamp-deep</h3>
+              <span class="font-mono text-xs text-espresso/80">#9E3A25</span>
+            </div>
+            <p class="mt-2 text-sm text-espresso leading-relaxed">Мелкий красный текст: ошибки, подсказки, звёздочки. 4.83:1 на cream.</p>
+          </div>
+        </article>
+
+        <!-- muted -->
+        <article class="border border-ink/25 rounded-lg overflow-hidden">
+          <div class="bg-muted p-6 h-28 flex items-end border-b border-ink/15">
+            <span class="font-display text-lg font-semibold text-paper">Aa</span>
+          </div>
+          <div class="p-5">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="font-mono text-sm font-medium text-ink">--color-muted</h3>
+              <span class="font-mono text-xs text-espresso/80">#655547</span>
+            </div>
+            <p class="mt-2 text-sm text-espresso leading-relaxed">Мелкие подписи, шапки таблиц, подсказки. 5.06:1 на cream, 6.01:1 на paper.</p>
+          </div>
+        </article>
+
+        <!-- olive -->
+        <article class="border border-ink/25 rounded-lg overflow-hidden">
+          <div class="bg-olive p-6 h-28 flex items-end border-b border-ink/15">
+            <span class="font-display text-lg font-semibold text-paper">Aa</span>
+          </div>
+          <div class="p-5">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="font-mono text-sm font-medium text-ink">--color-olive</h3>
+              <span class="font-mono text-xs text-espresso/80">#6F7459</span>
+            </div>
+            <p class="mt-2 text-sm text-espresso leading-relaxed">Крупные номера секций и декор.</p>
+          </div>
+        </article>
+      </div>
+
+      <!-- Контрастные пары -->
+      <h3 class="mt-12 font-display text-xl font-semibold text-ink">Контрастные пары</h3>
+      <p class="mt-2 text-espresso leading-relaxed max-w-[70ch]">
+        Значения посчитаны по WCAG 2.1. Порог AA для обычного текста — 4.5:1,
+        для крупного (≥24px или ≥18.66px жирным) — 3:1.
+      </p>
+
+      <div class="mt-5 overflow-x-auto border border-ink/25 rounded-lg">
+        <table class="w-full text-sm border-collapse min-w-[620px]">
+          <thead>
+            <tr class="bg-cream text-left text-[11px] uppercase tracking-[0.14em] text-espresso/80">
+              <th class="font-bold px-4 py-3">Текст на фоне</th>
+              <th class="font-bold px-4 py-3">Пример</th>
+              <th class="font-bold px-4 py-3 tnum">Контраст</th>
+              <th class="font-bold px-4 py-3">Вывод</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-ink/15">
+            <tr>
+              <td class="px-4 py-3 font-mono text-xs text-ink">ink / paper</td>
+              <td class="px-4 py-3"><span class="bg-paper text-ink px-3 py-1 border border-ink/20 rounded-sm">Основной текст</span></td>
+              <td class="px-4 py-3 tnum text-espresso">14.43:1</td>
+              <td class="px-4 py-3 text-espresso">AA и AAA для любого текста</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-mono text-xs text-ink">espresso / paper</td>
+              <td class="px-4 py-3"><span class="bg-paper text-espresso px-3 py-1 border border-ink/20 rounded-sm">Абзац текста</span></td>
+              <td class="px-4 py-3 tnum text-espresso">11.51:1</td>
+              <td class="px-4 py-3 text-espresso">AA и AAA для любого текста</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-mono text-xs text-ink">stamp-deep / cream</td>
+              <td class="px-4 py-3"><span class="bg-cream text-stamp-deep px-3 py-1 border border-ink/20 rounded-sm text-xs font-semibold">Ошибка поля</span></td>
+              <td class="px-4 py-3 tnum text-espresso">4.83:1</td>
+              <td class="px-4 py-3 text-espresso">AA для мелкого текста — им подписаны ошибки и звёздочки</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-mono text-xs text-ink">stamp-deep / paper</td>
+              <td class="px-4 py-3"><span class="bg-paper text-stamp-deep px-3 py-1 border border-ink/20 rounded-sm text-xs font-semibold">Ошибка на бумаге</span></td>
+              <td class="px-4 py-3 tnum text-espresso">5.74:1</td>
+              <td class="px-4 py-3 text-espresso">AA; состояния сети и обязательных полей</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-mono text-xs text-ink">muted / cream</td>
+              <td class="px-4 py-3"><span class="bg-cream text-muted px-3 py-1 border border-ink/20 rounded-sm text-xs">Белорусский номер — по нему перезвоним</span></td>
+              <td class="px-4 py-3 tnum text-espresso">5.06:1</td>
+              <td class="px-4 py-3 text-espresso">AA для мелкого текста; подписи и подсказки под полями</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-mono text-xs text-ink">muted / paper</td>
+              <td class="px-4 py-3"><span class="bg-paper text-muted px-3 py-1 border border-ink/20 rounded-sm text-xs">Наименование · Кол-во · Сумма</span></td>
+              <td class="px-4 py-3 tnum text-espresso">6.01:1</td>
+              <td class="px-4 py-3 text-espresso">AA; бейджи, метки и шапка таблицы заказа</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-mono text-xs text-ink">stamp / paper</td>
+              <td class="px-4 py-3"><span class="bg-paper text-stamp px-3 py-1 border border-ink/20 rounded-sm">Ссылка и акцент</span></td>
+              <td class="px-4 py-3 tnum text-espresso">4.62:1</td>
+              <td class="px-4 py-3 text-espresso">AA для текста ≥16px и крупных кнопок</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-mono text-xs text-ink">olive / paper</td>
+              <td class="px-4 py-3"><span class="bg-paper text-olive px-3 py-1 border border-ink/20 rounded-sm text-xl font-semibold">Крупный акцент</span></td>
+              <td class="px-4 py-3 tnum text-espresso">4.10:1</td>
+              <td class="px-4 py-3 text-espresso">Крупный текст и декор; для абзацев не годится</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-mono text-xs text-ink">paper / espresso</td>
+              <td class="px-4 py-3"><span class="bg-espresso text-paper px-3 py-1 rounded-sm">Текст на тёмном</span></td>
+              <td class="px-4 py-3 tnum text-espresso">11.51:1</td>
+              <td class="px-4 py-3 text-espresso">AA и AAA; так сделаны шапка, блок подписки и подвал</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-mono text-xs text-ink">paper/85 / espresso</td>
+              <td class="px-4 py-3"><span class="bg-espresso text-paper/85 px-3 py-1 rounded-sm">Абзац на тёмной секции</span></td>
+              <td class="px-4 py-3 tnum text-espresso">8.76:1</td>
+              <td class="px-4 py-3 text-espresso">AA и AAA; текст секции «Заявка» на подложке espresso</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-mono text-xs text-ink">paper / stamp</td>
+              <td class="px-4 py-3"><span class="bg-stamp text-paper px-3 py-1 rounded-sm">Текст на кнопке</span></td>
+              <td class="px-4 py-3 tnum text-espresso">4.62:1</td>
+              <td class="px-4 py-3 text-espresso">AA; поэтому на кнопке светлый текст paper</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-mono text-xs text-ink">ink / cream</td>
+              <td class="px-4 py-3"><span class="bg-cream text-ink px-3 py-1 border border-ink/20 rounded-sm">Текст на карточке</span></td>
+              <td class="px-4 py-3 tnum text-espresso">12.15:1</td>
+              <td class="px-4 py-3 text-espresso">AA и AAA; карточки товаров и форма</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-mono text-xs text-ink">stamp / cream</td>
+              <td class="px-4 py-3"><span class="bg-cream text-stamp px-3 py-1 border border-ink/20 rounded-sm text-xl font-bold">Крупный штамп</span></td>
+              <td class="px-4 py-3 tnum text-espresso">3.89:1</td>
+              <td class="px-4 py-3 text-espresso">Только крупный/жирный текст; для мелкого берём stamp-deep</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="mt-3 text-sm text-espresso/80">
+        <span class="font-mono text-xs">--color-stamp</span> затемнённый от «оранжевого» акцента ради 4.62:1 на бумаге;
+        для мелкого красного текста введён <span class="font-mono text-xs">--color-stamp-deep</span>,
+        для мелких подписей — <span class="font-mono text-xs">--color-muted</span>.
+      </p>
+    </section>
+
+    <!-- ─────────────────────────── ТИПОГРАФИКА ─────────────────────────── -->
+    <section id="type" class="mt-16 scroll-mt-20" aria-labelledby="type-title">
+      <div class="flex items-start gap-4">
+        <p class="font-display text-4xl lg:text-5xl section-num leading-none" aria-hidden="true">02</p>
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-[0.24em] text-espresso/80">Типографика</p>
+          <h2 id="type-title" class="mt-2 font-display font-semibold text-ink text-2xl sm:text-3xl">Шкала вживую</h2>
+        </div>
+      </div>
+
+      <p class="mt-4 text-espresso leading-relaxed max-w-[70ch]">
+        Заголовки — антиква <span class="font-mono text-xs">--font-display</span> (Literata), текст и интерфейс —
+        <span class="font-mono text-xs">--font-sans</span> (Manrope). Размеры через <span class="font-mono text-xs">clamp()</span>,
+        минимум для служебных подписей — 10–11px.
+      </p>
+
+      <div class="mt-8 divide-y divide-ink/15 border-y border-ink/25">
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 py-6 items-baseline">
+          <div class="lg:col-span-3">
+            <p class="font-mono text-xs text-ink">h1 · display</p>
+            <p class="mt-1 text-xs text-muted leading-relaxed">clamp(2.35rem, 8vw, 5.25rem)<br>weight 700 · line-height 0.98</p>
+          </div>
+          <p class="lg:col-span-9 font-display font-bold text-ink leading-[0.98] tracking-[-0.01em]" style="font-size: clamp(2.35rem, 7vw, 4.5rem);">
+            Кофе, который обжарили в&nbsp;четверг
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 py-6 items-baseline">
+          <div class="lg:col-span-3">
+            <p class="font-mono text-xs text-ink">h2 · section</p>
+            <p class="mt-1 text-xs text-muted leading-relaxed">clamp(1.75rem, 4.6vw, 3.25rem)<br>weight 600 · line-height 1.03</p>
+          </div>
+          <p class="lg:col-span-9 font-display font-semibold text-ink leading-[1.03]" style="font-size: clamp(1.75rem, 4vw, 2.75rem);">
+            Дата обжарки важнее упаковки
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 py-6 items-baseline">
+          <div class="lg:col-span-3">
+            <p class="font-mono text-xs text-ink">h3 · card</p>
+            <p class="mt-1 text-xs text-muted leading-relaxed">1.25rem / 20px<br>weight 600 · line-height 1.35</p>
+          </div>
+          <p class="lg:col-span-9 font-display text-xl font-semibold text-ink leading-snug">Эфиопия Иргачеффе</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 py-6 items-baseline">
+          <div class="lg:col-span-3">
+            <p class="font-mono text-xs text-ink">lead</p>
+            <p class="mt-1 text-xs text-muted leading-relaxed">1.125rem–1.25rem / 18–20px<br>weight 400 · line-height 1.7</p>
+          </div>
+          <p class="lg:col-span-9 text-espresso text-lg leading-relaxed max-w-[60ch]">
+            Маленькая обжарка в Минске. Обжариваем сами, партиями по 5 кг, с 2019 года.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 py-6 items-baseline">
+          <div class="lg:col-span-3">
+            <p class="font-mono text-xs text-ink">body</p>
+            <p class="mt-1 text-xs text-muted leading-relaxed">1rem / 16px<br>weight 400 · line-height 1.7</p>
+          </div>
+          <p class="lg:col-span-9 text-espresso text-base leading-relaxed max-w-[68ch]">
+            Две пачки по 250 г раз в месяц, доставка по Минску бесплатно. Оплата — после звонка менеджера.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 py-6 items-baseline">
+          <div class="lg:col-span-3">
+            <p class="font-mono text-xs text-ink">small / hint</p>
+            <p class="mt-1 text-xs text-muted leading-relaxed">0.875rem / 14px<br>weight 400 · line-height 1.6</p>
+          </div>
+          <p class="lg:col-span-9 text-espresso text-sm leading-relaxed max-w-[64ch]">
+            Выберите сорт и нажмите «Добавить».
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 py-6 items-baseline">
+          <div class="lg:col-span-3">
+            <p class="font-mono text-xs text-ink">table / th</p>
+            <p class="mt-1 text-xs text-muted leading-relaxed">0.6875rem / 11px<br>weight 700 · uppercase · tracking 0.12em · <span class="text-muted">--color-muted</span></p>
+          </div>
+          <p class="lg:col-span-9 text-[11px] font-bold uppercase tracking-[0.12em] text-muted">Наименование · Кол-во · Сумма</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 py-6 items-baseline">
+          <div class="lg:col-span-3">
+            <p class="font-mono text-xs text-ink">table / num</p>
+            <p class="mt-1 text-xs text-muted leading-relaxed">0.875rem / 14px<br>weight 500 · <span class="font-mono">tnum</span> · 32, 64, 90 BYN</p>
+          </div>
+          <p class="lg:col-span-9 text-ink text-sm font-medium tnum">32 BYN · 64 BYN · 90 BYN · 128 BYN · 180 BYN</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 py-6 items-baseline">
+          <div class="lg:col-span-3">
+            <p class="font-mono text-xs text-ink">error / hint</p>
+            <p class="mt-1 text-xs text-muted leading-relaxed">0.75rem / 12px<br>weight 600 · <span class="text-stamp-deep">--color-stamp-deep</span></p>
+          </div>
+          <p class="lg:col-span-9 text-xs font-semibold text-stamp-deep">Введите белорусский номер: +375 29 123-45-67</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 py-6 items-baseline">
+          <div class="lg:col-span-3">
+            <p class="font-mono text-xs text-ink">meta / mono</p>
+            <p class="mt-1 text-xs text-muted leading-relaxed">--font-mono · 0.75rem<br>для токенов и служебных подписей</p>
+          </div>
+          <p class="lg:col-span-9 font-mono text-xs text-espresso">--color-muted: #655547; ethiopia:2,colombia:1; 250 г</p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ─────────────────────────── КНОПКИ И ПОЛЯ ─────────────────────────── -->
+    <section id="controls" class="mt-16 scroll-mt-20" aria-labelledby="controls-title">
+      <div class="flex items-start gap-4">
+        <p class="font-display text-4xl lg:text-5xl section-num leading-none" aria-hidden="true">03</p>
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-[0.24em] text-espresso/80">Кнопки и поля</p>
+          <h2 id="controls-title" class="mt-2 font-display font-semibold text-ink text-2xl sm:text-3xl">Элементы управления</h2>
+        </div>
+      </div>
+
+      <div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+
+        <!-- Кнопки -->
+        <div>
+          <h3 class="font-display text-lg font-semibold text-ink">Кнопки</h3>
+          <p class="mt-2 text-sm text-espresso leading-relaxed">
+            Скругления — токены <span class="font-mono text-xs">--radius-md</span> для кнопок и полей,
+            <span class="font-mono text-xs">--radius-lg</span> для карточек. Высота 44–52px, курсор — «рука».
+          </p>
+
+          <div class="mt-5 space-y-5">
+            <div class="flex flex-wrap items-center gap-4">
+              <button type="button" class="inline-flex cursor-pointer items-center justify-center min-h-[52px] px-7 bg-stamp text-paper text-base font-semibold rounded-md border border-stamp hover:bg-espresso hover:border-espresso transition-colors duration-200">Оставить заявку</button>
+              <span class="font-mono text-xs text-espresso/80">primary · bg-stamp / text-paper</span>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-4">
+              <button type="button" class="inline-flex cursor-pointer items-center justify-center min-h-[52px] px-7 bg-transparent text-ink text-base font-semibold rounded-md border border-ink/40 hover:border-ink hover:bg-cream transition-colors duration-200">Смотреть ассортимент</button>
+              <span class="font-mono text-xs text-espresso/80">secondary · border-ink/40 / text-ink</span>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-4">
+              <button type="button" class="inline-flex cursor-pointer items-center justify-center min-h-[44px] px-5 bg-transparent text-ink text-sm font-semibold rounded-md border border-ink/40 hover:bg-ink hover:text-paper hover:border-ink transition-colors duration-200">Добавить</button>
+              <span class="font-mono text-xs text-espresso/80">ghost · добавляет сорт в таблицу</span>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-4">
+              <button type="button" disabled class="inline-flex items-center justify-center min-h-[52px] px-7 bg-stamp text-paper text-base font-semibold rounded-md border border-stamp opacity-60 cursor-not-allowed">Отправляем…</button>
+              <span class="font-mono text-xs text-espresso/80">disabled · opacity-60 · cursor-not-allowed</span>
+            </div>
+          </div>
+
+          <h3 class="mt-10 font-display text-lg font-semibold text-ink">Ссылки</h3>
+          <ul class="mt-3 space-y-2 text-base">
+            <li><a href="#controls" class="cursor-pointer text-ink underline decoration-stamp/50 decoration-2 underline-offset-4 hover:decoration-stamp transition-colors duration-200">+375 29 123-45-67</a> <span class="font-mono text-xs text-espresso/80">— в тексте, чернила + акцентное подчёркивание</span></li>
+            <li><a href="#controls" class="cursor-pointer text-stamp font-semibold hover:text-ink transition-colors duration-200">Минск, ул. Короля, 9 →</a> <span class="font-mono text-xs text-espresso/80">— ссылка-действие, text-stamp</span></li>
+          </ul>
+        </div>
+
+        <!-- Поля -->
+        <div>
+          <h3 class="font-display text-lg font-semibold text-ink">Поля ввода</h3>
+          <p class="mt-2 text-sm text-espresso leading-relaxed">
+            Поле на подложке <span class="font-mono text-xs">bg-paper</span> внутри карточки
+            <span class="font-mono text-xs">bg-cream</span>; радиус <span class="font-mono text-xs">--radius-md</span>,
+            при фокусе рамка темнеет до ink.
+          </p>
+
+          <div class="mt-5 space-y-5">
+            <div>
+              <label for="d-name" class="block text-sm font-semibold text-ink mb-2">Как вас зовут <span class="text-stamp-deep" aria-hidden="true">*</span></label>
+              <input id="d-name" type="text" placeholder="Аня"
+                class="w-full min-h-[48px] px-4 bg-paper text-ink border border-ink/30 rounded-md placeholder:text-espresso/40 focus:border-ink transition-colors duration-200">
+              <p class="mt-1.5 text-xs text-muted">Подсказка под полем: что мы хотим от человека.</p>
+            </div>
+
+            <div>
+              <label for="d-phone" class="block text-sm font-semibold text-ink mb-2">Телефон <span class="text-stamp-deep" aria-hidden="true">*</span></label>
+              <input id="d-phone" type="tel" placeholder="+375 29 123-45-67"
+                class="w-full min-h-[48px] px-4 bg-paper text-ink border border-ink/30 rounded-md placeholder:text-espresso/40 focus:border-ink transition-colors duration-200">
+              <p class="mt-1.5 text-xs text-muted">Белорусский номер — по нему перезвоним.</p>
+            </div>
+
+            <div>
+              <label for="d-comment" class="block text-sm font-semibold text-ink mb-2">Комментарий</label>
+              <textarea id="d-comment" rows="3" placeholder="Например: помол под воронку, привезти в офис"
+                class="w-full px-4 py-3 bg-paper text-ink border border-ink/30 rounded-md placeholder:text-espresso/40 focus:border-ink transition-colors duration-200 resize-y"></textarea>
+            </div>
+          </div>
+
+          <h3 class="mt-10 font-display text-lg font-semibold text-ink">Селекты</h3>
+          <p class="mt-2 text-sm text-espresso leading-relaxed">
+            В форме два селекта, оба обязательные: «Что интересует» и «Сорт кофе».
+            Первая опция пустая и <span class="font-mono text-xs">disabled</span>, выбрана по умолчанию.
+            Сорт из селекта уходит в таблицу заказа кнопкой «Добавить».
+          </p>
+
+          <div class="mt-4 space-y-4">
+            <div>
+              <label for="d-interest" class="block text-sm font-semibold text-ink mb-2">Что интересует <span class="text-stamp-deep" aria-hidden="true">*</span></label>
+              <select id="d-interest" class="w-full min-h-[48px] px-4 py-2 bg-paper text-ink border border-ink/30 rounded-md cursor-pointer focus:border-ink transition-colors duration-200">
+                <option value="" disabled selected>Выберите…</option>
+                <option value="question">У меня есть вопрос</option>
+                <option value="order">Хочу сделать заказ</option>
+              </select>
+            </div>
+            <div>
+              <label for="d-sort" class="block text-sm font-semibold text-ink mb-2">Сорт кофе <span class="text-stamp-deep" aria-hidden="true">*</span></label>
+              <select id="d-sort" class="w-full min-h-[48px] px-4 py-2 bg-paper text-ink border border-ink/30 rounded-md cursor-pointer focus:border-ink transition-colors duration-200">
+                <option value="" disabled selected>Не выбрано</option>
+                <option value="ethiopia">Эфиопия Иргачеффе — 32 BYN</option>
+                <option value="colombia">Колумбия Уила — 29 BYN</option>
+                <option value="brazil">Бразилия Серрадо — 26 BYN</option>
+                <option value="drip">Дрип-пакеты, ассорти — 18 BYN</option>
+              </select>
+            </div>
+          </div>
+
+          <h3 class="mt-10 font-display text-lg font-semibold text-ink">Чекбокс</h3>
+          <p class="mt-2 text-sm text-espresso leading-relaxed">
+            Для согласий и опций. Кликабельна вся строка, зона ≥44px.
+          </p>
+          <label class="mt-4 flex items-center gap-3 min-h-[44px] cursor-pointer select-none">
+            <input type="checkbox" class="accent-stamp w-5 h-5" checked>
+            <span class="text-sm text-espresso">Смолоть зерно (укажу способ в комментарии)</span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────── СОСТОЯНИЯ ФОРМЫ ─────────────────────────── -->
+    <section id="states" class="mt-16 scroll-mt-20" aria-labelledby="states-title">
+      <div class="flex items-start gap-4">
+        <p class="font-display text-4xl lg:text-5xl section-num leading-none" aria-hidden="true">04</p>
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-[0.24em] text-espresso/80">Состояния формы</p>
+          <h2 id="states-title" class="mt-2 font-display font-semibold text-ink text-2xl sm:text-3xl">Восемь состояний — от пустой до ошибки сети</h2>
+        </div>
+      </div>
+
+      <p class="mt-4 text-espresso leading-relaxed max-w-[74ch]">
+        Каждое состояние отвечает на вопрос «что произошло и что делать дальше». Ошибки — на русском
+        и с примером номера; мелкий красный текст — токеном <span class="font-mono text-xs">--color-stamp-deep</span>.
+      </p>
+
+      <div class="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- 1. Пустая -->
+        <article class="bg-cream border border-ink/25 rounded-lg p-6">
+          <p class="font-mono text-xs text-espresso/80">Состояние 1 — пустая</p>
+          <h3 class="mt-2 font-display text-lg font-semibold text-ink">Ничего не введено</h3>
+          <div class="mt-4 space-y-4">
+            <div>
+              <label for="s1-name" class="block text-sm font-semibold text-ink mb-2">Как вас зовут <span class="text-stamp-deep" aria-hidden="true">*</span></label>
+              <input id="s1-name" type="text" placeholder="Аня"
+                class="w-full min-h-[48px] px-4 bg-paper text-ink border border-ink/30 rounded-md placeholder:text-espresso/40">
+            </div>
+            <div>
+              <label for="s1-phone" class="block text-sm font-semibold text-ink mb-2">Телефон <span class="text-stamp-deep" aria-hidden="true">*</span></label>
+              <input id="s1-phone" type="tel" placeholder="+375 29 123-45-67"
+                class="w-full min-h-[48px] px-4 bg-paper text-ink border border-ink/30 rounded-md placeholder:text-espresso/40">
+            </div>
+            <div>
+              <label for="s1-interest" class="block text-sm font-semibold text-ink mb-2">Что интересует <span class="text-stamp-deep" aria-hidden="true">*</span></label>
+              <select id="s1-interest" class="w-full min-h-[48px] px-4 py-2 bg-paper text-ink border border-ink/30 rounded-md cursor-pointer">
+                <option value="" disabled selected>Выберите…</option>
+                <option value="question">У меня есть вопрос</option>
+                <option value="order">Хочу сделать заказ</option>
+              </select>
+            </div>
+            <p class="text-xs text-muted">Выберите сорт и нажмите «Добавить».</p>
+            <button type="button" class="inline-flex cursor-pointer items-center justify-center min-h-[48px] px-6 bg-stamp text-paper text-sm font-semibold rounded-md border border-stamp">Отправить заявку</button>
+          </div>
+        </article>
+
+        <!-- 2. Фокус -->
+        <article class="bg-cream border border-ink/25 rounded-lg p-6">
+          <p class="font-mono text-xs text-espresso/80">Состояние 2 — фокус</p>
+          <h3 class="mt-2 font-display text-lg font-semibold text-ink">Поле в фокусе (клавиатура)</h3>
+          <div class="mt-4 space-y-4">
+            <div>
+              <label for="s2-name" class="block text-sm font-semibold text-ink mb-2">Как вас зовут</label>
+              <input id="s2-name" type="text" value="Аня" class="demo-focus w-full min-h-[48px] px-4 bg-paper text-ink border border-ink/30 rounded-md">
+              <p class="mt-1.5 text-xs text-muted">Видимая рамка 2px цветом stamp, offset 2px — видна и на светлом, и на тёмном.</p>
+            </div>
+          </div>
+        </article>
+
+        <!-- 3. Ошибка телефона -->
+        <article class="bg-cream border border-ink/25 rounded-lg p-6">
+          <p class="font-mono text-xs text-espresso/80">Состояние 3 — ошибка телефона</p>
+          <h3 class="mt-2 font-display text-lg font-semibold text-ink">Введён неправильный номер</h3>
+          <div class="mt-4 space-y-4">
+            <div>
+              <label for="s3-phone" class="block text-sm font-semibold text-ink mb-2">Телефон <span class="text-stamp-deep" aria-hidden="true">*</span></label>
+              <input id="s3-phone" type="tel" value="+375 29 12" aria-invalid="true" aria-describedby="s3-err"
+                class="w-full min-h-[48px] px-4 bg-paper text-ink border border-ink/30 rounded-md">
+              <p id="s3-err" class="mt-1.5 text-xs font-semibold text-stamp-deep" role="alert">
+                Введите белорусский номер: +375 29 123-45-67
+              </p>
+            </div>
+            <button type="button" class="inline-flex cursor-pointer items-center justify-center min-h-[48px] px-6 bg-stamp text-paper text-sm font-semibold rounded-md border border-stamp">Отправить заявку</button>
+          </div>
+          <p class="mt-3 text-xs text-muted">
+            При <span class="font-mono text-xs">aria-invalid="true"</span> поле получает рамку stamp-deep. Принимаем коды 17, 25, 29, 33, 44.
+          </p>
+        </article>
+
+        <!-- 4. Ошибка обязательного селекта -->
+        <article class="bg-cream border border-ink/25 rounded-lg p-6">
+          <p class="font-mono text-xs text-espresso/80">Состояние 4 — ошибка «Что интересует»</p>
+          <h3 class="mt-2 font-display text-lg font-semibold text-ink">Обязательное поле не выбрано</h3>
+          <div class="mt-4 space-y-4">
+            <div>
+              <label for="s4-interest" class="block text-sm font-semibold text-ink mb-2">Что интересует <span class="text-stamp-deep" aria-hidden="true">*</span></label>
+              <select id="s4-interest" aria-invalid="true" aria-describedby="s4-err"
+                class="w-full min-h-[48px] px-4 py-2 bg-paper text-ink border border-ink/30 rounded-md cursor-pointer">
+                <option value="" disabled selected>Выберите…</option>
+                <option value="question">У меня есть вопрос</option>
+                <option value="order">Хочу сделать заказ</option>
+              </select>
+              <p id="s4-err" class="mt-1.5 text-xs font-semibold text-stamp-deep" role="alert">
+                Выберите, что интересует.
+              </p>
+            </div>
+            <button type="button" class="inline-flex cursor-pointer items-center justify-center min-h-[48px] px-6 bg-stamp text-paper text-sm font-semibold rounded-md border border-stamp">Отправить заявку</button>
+          </div>
+          <p class="mt-3 text-xs text-muted">Пустая опция <span class="font-mono text-xs">disabled</span> — пользователь обязан выбрать один из трёх вариантов.</p>
+        </article>
+
+        <!-- 5. Отправка -->
+        <article class="bg-cream border border-ink/25 rounded-lg p-6">
+          <p class="font-mono text-xs text-espresso/80">Состояние 5 — отправка</p>
+          <h3 class="mt-2 font-display text-lg font-semibold text-ink">Данные уходят, кнопка заблокирована</h3>
+          <div class="mt-4 space-y-4">
+            <div>
+              <label for="s5-phone" class="block text-sm font-semibold text-ink mb-2">Телефон</label>
+              <input id="s5-phone" type="tel" value="+375 29 123-45-67" disabled
+                class="w-full min-h-[48px] px-4 bg-paper/60 text-muted border border-ink/20 rounded-md cursor-not-allowed">
+            </div>
+            <button type="button" disabled
+              class="inline-flex items-center justify-center min-h-[52px] px-7 bg-stamp text-paper text-base font-semibold rounded-md border border-stamp opacity-60 cursor-not-allowed">
+              Отправляем…
+            </button>
+          </div>
+          <p class="mt-3 text-xs text-muted">Блокировка исключает двойной клик — отсюда и защита от дубля.</p>
+        </article>
+
+        <!-- 6. Успех -->
+        <article class="bg-cream border border-ink/25 rounded-lg p-6">
+          <p class="font-mono text-xs text-espresso/80">Состояние 6 — успех</p>
+          <h3 class="mt-2 font-display text-lg font-semibold text-ink">Заявка принята</h3>
+          <div class="mt-4 border border-olive/50 bg-olive/10 rounded-md px-4 py-3" role="status">
+            <p class="font-semibold text-ink">Заявка принята — перезвоним</p>
+            <p class="mt-1 text-sm text-espresso">Спасибо, Аня. Перезвоним в рабочее время.</p>
+          </div>
+        </article>
+
+        <!-- 7. Дубликат -->
+        <article class="bg-cream border border-ink/25 rounded-lg p-6">
+          <p class="font-mono text-xs text-espresso/80">Состояние 7 — дубликат</p>
+          <h3 class="mt-2 font-display text-lg font-semibold text-ink">Тот же номер в течение 10 минут</h3>
+          <div class="mt-4 border border-ink/40 bg-ink/5 rounded-md px-4 py-3" role="status">
+            <p class="font-semibold text-ink">Заявка уже принята</p>
+            <p class="mt-1 text-sm text-espresso">Мы уже получили заявку с этого номера и скоро перезвоним.</p>
+          </div>
+          <p class="mt-3 text-xs text-muted">Не пугаем ошибкой: это нормальный исход повторной отправки, а не сбой.</p>
+        </article>
+
+        <!-- 8. Ошибка сети -->
+        <article class="bg-cream border border-ink/25 rounded-lg p-6 lg:col-span-2">
+          <p class="font-mono text-xs text-espresso/80">Состояние 8 — ошибка сети</p>
+          <h3 class="mt-2 font-display text-lg font-semibold text-ink">Не дозвонились до сервера</h3>
+          <div class="mt-4 max-w-[640px] border border-stamp-deep/60 bg-stamp/10 rounded-md px-4 py-3" role="alert">
+            <p class="font-semibold text-ink">Не удалось отправить заявку</p>
+            <p class="mt-1 text-sm text-espresso">Проверьте связь и попробуйте ещё раз. Введённые данные сохранены.</p>
+            <button type="button" class="mt-3 inline-flex cursor-pointer items-center justify-center min-h-[44px] px-5 bg-transparent text-ink text-sm font-semibold rounded-md border border-ink/50 hover:bg-ink hover:text-paper transition-colors duration-200">
+              Попробовать ещё раз
+            </button>
+            <p class="mt-2 text-xs text-espresso/80">
+              Если не получится — позвоните:
+              <a class="cursor-pointer underline decoration-stamp/60 underline-offset-4" href="tel:+375291234567">+375 29 123-45-67</a>
+              или напишите на
+              <a class="cursor-pointer underline decoration-stamp/60 underline-offset-4" href="mailto:hello@kvarta.by">hello@kvarta.by</a>.
+            </p>
+          </div>
+          <p class="mt-3 text-xs text-muted max-w-[74ch]">
+            Всегда два выхода: повторить попытку и связаться напрямую. Введённые данные не стираются.
+          </p>
+        </article>
+
+      </div>
+
+      <!-- Селекты: состояния -->
+      <h3 class="mt-12 font-display text-xl font-semibold text-ink">Селекты: состояния</h3>
+      <p class="mt-2 text-espresso leading-relaxed max-w-[74ch]">
+        Пять состояний каждого селекта: не выбрано, фокус, выбрано, ошибка обязательного поля, disabled. Оба селекта — обязательные.
+      </p>
+
+      <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div class="bg-cream border border-ink/25 rounded-lg p-5">
+          <p class="font-mono text-xs text-espresso/80">не выбрано</p>
+          <label for="sel-a" class="mt-3 block text-sm font-semibold text-ink mb-2">Что интересует</label>
+          <select id="sel-a" class="w-full min-h-[48px] px-4 py-2 bg-paper text-ink border border-ink/30 rounded-md cursor-pointer">
+            <option value="" disabled selected>Выберите…</option>
+            <option value="question">У меня есть вопрос</option>
+            <option value="order">Хочу сделать заказ</option>
+          </select>
+        </div>
+
+        <div class="bg-cream border border-ink/25 rounded-lg p-5">
+          <p class="font-mono text-xs text-espresso/80">фокус</p>
+          <label for="sel-b" class="mt-3 block text-sm font-semibold text-ink mb-2">Что интересует</label>
+          <select id="sel-b" class="demo-focus w-full min-h-[48px] px-4 py-2 bg-paper text-ink border border-ink/30 rounded-md cursor-pointer">
+            <option value="question" selected>У меня есть вопрос</option>
+            <option value="order">Хочу сделать заказ</option>
+          </select>
+        </div>
+
+        <div class="bg-cream border border-ink/25 rounded-lg p-5">
+          <p class="font-mono text-xs text-espresso/80">выбрано</p>
+          <label for="sel-c" class="mt-3 block text-sm font-semibold text-ink mb-2">Что интересует</label>
+          <select id="sel-c" class="w-full min-h-[48px] px-4 py-2 bg-paper text-ink border border-ink/30 rounded-md cursor-pointer">
+            <option value="order" selected>Хочу сделать заказ</option>
+            <option value="question">У меня есть вопрос</option>
+          </select>
+        </div>
+
+        <div class="bg-cream border border-ink/25 rounded-lg p-5">
+          <p class="font-mono text-xs text-espresso/80">ошибка обязательного</p>
+          <label for="sel-d" class="mt-3 block text-sm font-semibold text-ink mb-2">Что интересует</label>
+          <select id="sel-d" aria-invalid="true" aria-describedby="sel-d-err" class="w-full min-h-[48px] px-4 py-2 bg-paper text-ink border border-ink/30 rounded-md cursor-pointer">
+            <option value="" disabled selected>Выберите…</option>
+            <option value="question">У меня есть вопрос</option>
+            <option value="order">Хочу сделать заказ</option>
+          </select>
+          <p id="sel-d-err" class="mt-1.5 text-xs font-semibold text-stamp-deep" role="alert">Выберите, что интересует.</p>
+        </div>
+
+        <div class="bg-cream border border-ink/25 rounded-lg p-5">
+          <p class="font-mono text-xs text-espresso/80">disabled</p>
+          <label for="sel-e" class="mt-3 block text-sm font-semibold text-ink mb-2">Что интересует</label>
+          <select id="sel-e" disabled class="w-full min-h-[48px] px-4 py-2 bg-paper/60 text-muted border border-ink/20 rounded-md cursor-not-allowed">
+            <option value="order" selected>Хочу сделать заказ</option>
+          </select>
+        </div>
+
+        <div class="bg-cream border border-ink/25 rounded-lg p-5">
+          <p class="font-mono text-xs text-espresso/80">ошибка обязательного — сорт кофе</p>
+          <label for="sel-f" class="mt-3 block text-sm font-semibold text-ink mb-2">Сорт кофе <span class="text-stamp-deep" aria-hidden="true">*</span></label>
+          <select id="sel-f" required aria-invalid="true" aria-describedby="sel-f-err" class="w-full min-h-[48px] px-4 py-2 bg-paper text-ink border border-ink/30 rounded-md cursor-pointer">
+            <option value="" disabled selected>Не выбрано</option>
+            <option value="ethiopia">Эфиопия Иргачеффе — 32 BYN</option>
+            <option value="colombia">Колумбия Уила — 29 BYN</option>
+            <option value="brazil">Бразилия Серрадо — 26 BYN</option>
+            <option value="drip">Дрип-пакеты, ассорти — 18 BYN</option>
+          </select>
+          <p id="sel-f-err" class="mt-1.5 text-xs font-semibold text-stamp-deep" role="alert">Выберите сорт кофе.</p>
+          <p class="mt-2 text-xs text-muted">Ошибки нет, если сорт выбран в селекте или добавлен хотя бы один в таблицу.</p>
+        </div>
+      </div>
+
+      <!-- Свитчер подписки -->
+      <h3 class="mt-12 font-display text-xl font-semibold text-ink">Свитчер подписки</h3>
+      <p class="mt-2 text-espresso leading-relaxed max-w-[74ch]">
+        Настоящий чекбокс, стилизованный под переключатель: состояние уходит в скрытое поле
+        <span class="font-mono text-xs">subscription</span> со значениями <span class="font-mono text-xs">true</span>/<span class="font-mono text-xs">false</span>.
+        Не обязательное поле, по умолчанию выключено.
+      </p>
+
+      <div class="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div class="bg-cream border border-ink/25 rounded-lg p-5">
+          <p class="font-mono text-xs text-espresso/80">выкл · subscription = false</p>
+          <label class="mt-4 flex items-start gap-3 cursor-pointer select-none">
+            <input type="checkbox" id="sw-a" class="switch-input sr-only">
+            <span class="switch-track relative inline-flex shrink-0 items-center w-12 h-7 mt-0.5 rounded-full border transition-colors duration-200" aria-hidden="true">
+              <span class="switch-knob inline-block w-5 h-5 rounded-full transition-transform duration-200"></span>
+            </span>
+            <span>
+              <span class="block text-sm font-semibold text-ink leading-snug">Оформить подписку — 54 BYN/мес, 2 пачки по 250 г, доставка бесплатно</span>
+              <span class="mt-1 block text-xs text-muted">Включите, если хотите получать кофе каждый месяц</span>
+            </span>
+          </label>
+        </div>
+
+        <div class="bg-cream border border-ink/25 rounded-lg p-5">
+          <p class="font-mono text-xs text-espresso/80">вкл · subscription = true</p>
+          <label class="mt-4 flex items-start gap-3 cursor-pointer select-none">
+            <input type="checkbox" id="sw-b" class="switch-input sr-only" checked>
+            <span class="switch-track relative inline-flex shrink-0 items-center w-12 h-7 mt-0.5 rounded-full border transition-colors duration-200" aria-hidden="true">
+              <span class="switch-knob inline-block w-5 h-5 rounded-full transition-transform duration-200"></span>
+            </span>
+            <span>
+              <span class="block text-sm font-semibold text-ink leading-snug">Оформить подписку — 54 BYN/мес, 2 пачки по 250 г, доставка бесплатно</span>
+              <span class="mt-1 block text-xs text-muted">Включите, если хотите получать кофе каждый месяц</span>
+            </span>
+          </label>
+        </div>
+
+        <div class="bg-cream border border-ink/25 rounded-lg p-5">
+          <p class="font-mono text-xs text-espresso/80">фокус</p>
+          <label class="mt-4 flex items-start gap-3 cursor-pointer select-none">
+            <input type="checkbox" id="sw-c" class="switch-input sr-only" checked>
+            <span class="switch-track demo-focus relative inline-flex shrink-0 items-center w-12 h-7 mt-0.5 rounded-full border transition-colors duration-200" aria-hidden="true">
+              <span class="switch-knob inline-block w-5 h-5 rounded-full transition-transform duration-200"></span>
+            </span>
+            <span>
+              <span class="block text-sm font-semibold text-ink leading-snug">Оформить подписку — 54 BYN/мес</span>
+              <span class="mt-1 block text-xs text-muted">Кольцо фокуса — 2px цветом stamp, offset 2px</span>
+            </span>
+          </label>
+        </div>
+
+        <div class="bg-cream border border-ink/25 rounded-lg p-5">
+          <p class="font-mono text-xs text-espresso/80">disabled</p>
+          <label class="mt-4 flex items-start gap-3 select-none cursor-not-allowed">
+            <input type="checkbox" id="sw-d" class="switch-input sr-only" disabled>
+            <span class="switch-track relative inline-flex shrink-0 items-center w-12 h-7 mt-0.5 rounded-full border transition-colors duration-200 opacity-60" aria-hidden="true">
+              <span class="switch-knob inline-block w-5 h-5 rounded-full transition-transform duration-200"></span>
+            </span>
+            <span>
+              <span class="block text-sm font-semibold text-ink leading-snug">Оформить подписку — 54 BYN/мес</span>
+              <span class="mt-1 block text-xs text-muted">Недоступно · cursor-not-allowed</span>
+            </span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+      <!-- Режимы формы -->
+      <h3 class="mt-12 font-display text-xl font-semibold text-ink">Режимы формы</h3>
+      <p class="mt-2 text-espresso leading-relaxed max-w-[74ch]">
+        Селект «Что интересует» переключает режим. В режиме заказа видны свитчер подписки,
+        сорт кофе и таблица; в режиме вопроса остаётся только блок комментария, и он становится
+        обязательным. Скрытые блоки — через атрибут <span class="font-mono text-xs">hidden</span>,
+        обязательность на скрытых полях не висит.
+      </p>
+
+      <div class="mt-5 grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        <div class="bg-cream border border-ink/25 rounded-lg p-5">
+          <p class="font-mono text-xs text-espresso/80">режим «заказ»</p>
+          <h4 class="mt-2 font-display text-lg font-semibold text-ink">Свитчер + сорт + таблица</h4>
+          <div class="mt-4 space-y-4">
+            <div>
+              <label for="m1-interest" class="block text-sm font-semibold text-ink mb-2">Что интересует</label>
+              <select id="m1-interest" class="w-full min-h-[48px] px-4 py-2 bg-paper text-ink border border-ink/30 rounded-md cursor-pointer">
+                <option value="question">У меня есть вопрос</option>
+                <option value="order" selected>Хочу сделать заказ</option>
+              </select>
+            </div>
+
+            <div class="rounded-md border border-ink/25 bg-paper px-4 py-3">
+              <label for="m1-switch" class="flex items-start gap-3 cursor-pointer select-none">
+                <input type="checkbox" id="m1-switch" class="switch-input sr-only" checked>
+                <span class="switch-track relative inline-flex shrink-0 items-center w-12 h-7 mt-0.5 rounded-full border transition-colors duration-200" aria-hidden="true">
+                  <span class="switch-knob inline-block w-5 h-5 rounded-full transition-transform duration-200"></span>
+                </span>
+                <span>
+                  <span class="block text-sm font-semibold text-ink leading-snug">Оформить подписку — 54 BYN/мес, 2 пачки по 250 г, доставка бесплатно</span>
+                  <span class="mt-1 block text-xs text-muted">Включите, если хотите получать кофе каждый месяц</span>
+                </span>
+              </label>
+            </div>
+
+            <div>
+              <label for="m1-sort" class="block text-sm font-semibold text-ink mb-2">Сорт кофе <span class="text-stamp-deep" aria-hidden="true">*</span></label>
+              <div class="flex flex-col sm:flex-row gap-2">
+                <select id="m1-sort" class="flex-1 min-w-0 min-h-[48px] px-4 py-2 bg-paper text-ink border border-ink/30 rounded-md cursor-pointer">
+                  <option value="" disabled selected>Не выбрано</option>
+                  <option value="ethiopia">Эфиопия Иргачеффе — 32 BYN</option>
+                  <option value="colombia">Колумбия Уила — 29 BYN</option>
+                  <option value="brazil">Бразилия Серрадо — 26 BYN</option>
+                  <option value="drip">Дрип-пакеты, ассорти — 18 BYN</option>
+                </select>
+                <button type="button" class="inline-flex cursor-pointer items-center justify-center min-h-[48px] px-5 bg-transparent text-ink text-sm font-semibold rounded-md border border-ink/40 hover:bg-ink hover:text-paper hover:border-ink transition-colors duration-200">Добавить сорт</button>
+              </div>
+            </div>
+
+            <div class="overflow-hidden rounded-md border border-ink/25 bg-paper">
+              <table class="w-full text-sm tnum">
+                <caption class="sr-only">Состав заказа в режиме «заказ»</caption>
+                <thead>
+                  <tr class="text-left text-[11px] uppercase tracking-[0.12em] text-muted">
+                    <th scope="col" class="font-bold px-1.5 py-2">Наименование</th>
+                    <th scope="col" class="font-bold px-1.5 py-2 text-center w-[1%] whitespace-nowrap">Кол-во</th>
+                    <th scope="col" class="font-bold px-1.5 py-2 text-right w-[1%] whitespace-nowrap">Сумма</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-ink/15">
+                  <tr>
+                    <td class="px-1.5 py-2.5 align-middle">
+                      <div class="flex items-start justify-between gap-2">
+                        <span class="text-ink leading-snug">Эфиопия Иргачеффе</span>
+                        <button type="button" class="shrink-0 inline-flex cursor-pointer items-center justify-center w-6 h-6 -mt-0.5 rounded-md text-espresso hover:bg-stamp hover:text-paper transition-colors duration-200" aria-label="Удалить: Эфиопия Иргачеффе">×</button>
+                      </div>
+                    </td>
+                    <td class="px-1.5 py-2.5 align-middle">
+                      <div class="inline-flex items-center overflow-hidden rounded-md border border-ink/30 bg-paper">
+                        <button type="button" class="inline-flex cursor-pointer items-center justify-center w-6 h-9 text-base rounded-l-md hover:bg-ink hover:text-paper transition-colors duration-200" aria-label="Уменьшить количество">−</button>
+                        <span class="w-5 text-center text-sm text-ink tnum">2</span>
+                        <button type="button" class="inline-flex cursor-pointer items-center justify-center w-6 h-9 text-base rounded-r-md hover:bg-ink hover:text-paper transition-colors duration-200" aria-label="Увеличить количество">+</button>
+                      </div>
+                    </td>
+                    <td class="px-1.5 py-2.5 text-right align-middle whitespace-nowrap text-ink">64 BYN</td>
+                  </tr>
+                </tbody>
+                <tfoot>
+                  <tr class="border-t-2 border-ink/30">
+                    <td class="px-1.5 py-3 font-semibold text-ink">Итого</td>
+                    <td class="px-1.5 py-3"></td>
+                    <td class="px-1.5 py-3 text-right font-semibold text-ink whitespace-nowrap">64 BYN</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <div>
+              <label for="m1-comment" class="block text-sm font-semibold text-ink mb-2">Комментарий</label>
+              <textarea id="m1-comment" rows="2" placeholder="Например: помол под воронку" class="w-full px-4 py-3 bg-paper text-ink border border-ink/30 rounded-md placeholder:text-espresso/40 resize-y"></textarea>
+              <p class="mt-1.5 text-xs text-muted">Необязательно: помол, адрес, пожелания.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-cream border border-ink/25 rounded-lg p-5">
+          <p class="font-mono text-xs text-espresso/80">режим «вопрос»</p>
+          <h4 class="mt-2 font-display text-lg font-semibold text-ink">Только комментарий</h4>
+          <div class="mt-4 space-y-4">
+            <div>
+              <label for="m2-interest" class="block text-sm font-semibold text-ink mb-2">Что интересует</label>
+              <select id="m2-interest" class="w-full min-h-[48px] px-4 py-2 bg-paper text-ink border border-ink/30 rounded-md cursor-pointer">
+                <option value="question" selected>У меня есть вопрос</option>
+                <option value="order">Хочу сделать заказ</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="m2-comment" class="block text-sm font-semibold text-ink mb-2">Вопрос <span class="text-stamp-deep" aria-hidden="true">*</span></label>
+              <textarea id="m2-comment" rows="3" placeholder="Например: как хранить зерно дома?" class="w-full px-4 py-3 bg-paper text-ink border border-ink/30 rounded-md placeholder:text-espresso/40 resize-y"></textarea>
+              <p class="mt-1.5 text-xs text-muted">Напишите вопрос — перезвоним и ответим.</p>
+            </div>
+
+            <p class="text-xs text-muted leading-relaxed">
+              Свитчер подписки, селект сорта, кнопка добавления и таблица заказа скрыты атрибутом
+              <span class="font-mono text-xs">hidden</span> и в отправку не попадают.
+            </p>
+          </div>
+        </div>
+
+        <div class="bg-cream border border-ink/25 rounded-lg p-5">
+          <p class="font-mono text-xs text-espresso/80">режим «вопрос» · ошибка обязательного</p>
+          <h4 class="mt-2 font-display text-lg font-semibold text-ink">Пустой комментарий</h4>
+          <div class="mt-4 space-y-4">
+            <div>
+              <label for="m3-interest" class="block text-sm font-semibold text-ink mb-2">Что интересует</label>
+              <select id="m3-interest" class="w-full min-h-[48px] px-4 py-2 bg-paper text-ink border border-ink/30 rounded-md cursor-pointer">
+                <option value="question" selected>У меня есть вопрос</option>
+                <option value="order">Хочу сделать заказ</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="m3-comment" class="block text-sm font-semibold text-ink mb-2">Вопрос <span class="text-stamp-deep" aria-hidden="true">*</span></label>
+              <textarea id="m3-comment" rows="3" aria-invalid="true" aria-describedby="m3-err" placeholder="Например: как хранить зерно дома?" class="w-full px-4 py-3 bg-paper text-ink border border-ink/30 rounded-md placeholder:text-espresso/40 resize-y"></textarea>
+              <p class="mt-1.5 text-xs text-muted">Напишите вопрос — перезвоним и ответим.</p>
+              <p id="m3-err" class="mt-1.5 text-xs font-semibold text-stamp-deep" role="alert">Напишите вопрос.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    <!-- ─────────────────────────── ТАБЛИЦА ЗАКАЗА ─────────────────────────── -->
+    <section id="order" class="mt-16 scroll-mt-20" aria-labelledby="order-title">
+      <div class="flex items-start gap-4">
+        <p class="font-display text-4xl lg:text-5xl section-num leading-none" aria-hidden="true">05</p>
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-[0.24em] text-espresso/80">Таблица заказа</p>
+          <h2 id="order-title" class="mt-2 font-display font-semibold text-ink text-2xl sm:text-3xl">Наименование, количество, сумма</h2>
+        </div>
+      </div>
+
+      <p class="mt-4 text-espresso leading-relaxed max-w-[74ch]">
+        Настоящий <span class="font-mono text-xs">&lt;table&gt;</span> вместо чипов: колонки «Наименование», «Кол-во», «Сумма»
+        и строка «Итого». Строк максимум четыре — по одной на продукт. Повторное добавление того же сорта
+        увеличивает количество, а не создаёт вторую строку. Кнопка удаления — в строке, рядом с названием.
+      </p>
+
+      <div class="mt-6 grid grid-cols-1 gap-6">
+
+        <!-- Пусто -->
+        <article class="bg-cream border border-ink/25 rounded-lg p-6">
+          <p class="font-mono text-xs text-espresso/80">пусто — таблицы нет, только подсказка</p>
+          <h3 class="mt-2 font-display text-lg font-semibold text-ink">Ничего не добавлено</h3>
+          <div class="mt-4">
+            <p class="text-xs text-muted">Выберите сорт и нажмите «Добавить».</p>
+          </div>
+        </article>
+
+        <!-- Одна строка -->
+        <article class="bg-cream border border-ink/25 rounded-lg p-6">
+          <p class="font-mono text-xs text-espresso/80">одна строка</p>
+          <h3 class="mt-2 font-display text-lg font-semibold text-ink">Один сорт, количество 1</h3>
+          <div class="mt-4 max-w-[560px]">
+<div class="overflow-hidden rounded-md border border-ink/25 bg-paper">
+<table class="w-full text-sm tnum">
+<caption class="sr-only">Состав заказа</caption>
+<thead>
+<tr class="text-left text-[11px] uppercase tracking-[0.12em] text-muted">
+<th scope="col" class="font-bold px-1.5 py-2">Наименование</th>
+<th scope="col" class="font-bold px-1.5 py-2 text-center w-[1%] whitespace-nowrap">Кол-во</th>
+<th scope="col" class="font-bold px-1.5 py-2 text-right w-[1%] whitespace-nowrap">Сумма</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-ink/15">
+<tr>
+<td class="px-1.5 py-2.5 align-middle">
+<div class="flex items-start justify-between gap-2">
+<span class="text-ink leading-snug">Бразилия Серрадо</span>
+<button type="button" class="shrink-0 inline-flex cursor-pointer items-center justify-center w-6 h-6 -mt-0.5 rounded-md text-espresso hover:bg-stamp hover:text-paper transition-colors duration-200" aria-label="Удалить: Бразилия Серрадо">×</button>
+</div>
+</td>
+<td class="px-1.5 py-2.5 align-middle">
+<div class="inline-flex items-center overflow-hidden rounded-md border border-ink/30 bg-paper">
+<button type="button" disabled class="inline-flex items-center justify-center w-6 h-9 text-base rounded-l-md opacity-40 cursor-not-allowed" aria-label="Уменьшить количество: Бразилия Серрадо">−</button>
+<span class="w-5 text-center text-sm text-ink tnum">1</span>
+<button type="button" class="inline-flex items-center justify-center w-6 h-9 text-base rounded-r-md cursor-pointer hover:bg-ink hover:text-paper transition-colors duration-200" aria-label="Увеличить количество: Бразилия Серрадо">+</button>
+</div>
+</td>
+<td class="px-1.5 py-2.5 text-right align-middle whitespace-nowrap text-ink">26 BYN</td>
+</tr>
+</tbody>
+<tfoot>
+<tr class="border-t-2 border-ink/30">
+<td class="px-1.5 py-3 font-semibold text-ink">Итого</td>
+<td class="px-1.5 py-3"></td>
+<td class="px-1.5 py-3 text-right font-semibold text-ink whitespace-nowrap">26 BYN</td>
+</tr>
+</tfoot>
+</table>
+</div>
+          </div>
+          <p class="mt-3 text-xs text-muted">
+            Количество 1 — кнопка <span class="font-mono text-xs">−</span> в заблокированном состоянии
+            (<span class="font-mono text-xs">opacity-40 · cursor-not-allowed</span>).
+          </p>
+        </article>
+
+        <!-- Несколько строк + Итого -->
+        <article class="bg-cream border border-ink/25 rounded-lg p-6">
+          <p class="font-mono text-xs text-espresso/80">несколько строк · строка «Итого»</p>
+          <h3 class="mt-2 font-display text-lg font-semibold text-ink">Три сорта, разные количества</h3>
+          <div class="mt-4 max-w-[720px]">
+<div class="overflow-hidden rounded-md border border-ink/25 bg-paper">
+<table class="w-full text-sm tnum">
+<caption class="sr-only">Состав заказа</caption>
+<thead>
+<tr class="text-left text-[11px] uppercase tracking-[0.12em] text-muted">
+<th scope="col" class="font-bold px-1.5 py-2">Наименование</th>
+<th scope="col" class="font-bold px-1.5 py-2 text-center w-[1%] whitespace-nowrap">Кол-во</th>
+<th scope="col" class="font-bold px-1.5 py-2 text-right w-[1%] whitespace-nowrap">Сумма</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-ink/15">
+<tr>
+<td class="px-1.5 py-2.5 align-middle">
+<div class="flex items-start justify-between gap-2">
+<span class="text-ink leading-snug">Эфиопия Иргачеффе</span>
+<button type="button" class="shrink-0 inline-flex cursor-pointer items-center justify-center w-6 h-6 -mt-0.5 rounded-md text-espresso hover:bg-stamp hover:text-paper transition-colors duration-200" aria-label="Удалить: Эфиопия Иргачеффе">×</button>
+</div>
+</td>
+<td class="px-1.5 py-2.5 align-middle">
+<div class="inline-flex items-center overflow-hidden rounded-md border border-ink/30 bg-paper">
+<button type="button" class="inline-flex items-center justify-center w-6 h-9 text-base rounded-l-md cursor-pointer hover:bg-ink hover:text-paper transition-colors duration-200" aria-label="Уменьшить количество: Эфиопия Иргачеффе">−</button>
+<span class="w-5 text-center text-sm text-ink tnum">2</span>
+<button type="button" class="inline-flex items-center justify-center w-6 h-9 text-base rounded-r-md cursor-pointer hover:bg-ink hover:text-paper transition-colors duration-200" aria-label="Увеличить количество: Эфиопия Иргачеффе">+</button>
+</div>
+</td>
+<td class="px-1.5 py-2.5 text-right align-middle whitespace-nowrap text-ink">64 BYN</td>
+</tr>
+<tr>
+<td class="px-1.5 py-2.5 align-middle">
+<div class="flex items-start justify-between gap-2">
+<span class="text-ink leading-snug">Колумбия Уила</span>
+<button type="button" class="shrink-0 inline-flex cursor-pointer items-center justify-center w-6 h-6 -mt-0.5 rounded-md text-espresso hover:bg-stamp hover:text-paper transition-colors duration-200" aria-label="Удалить: Колумбия Уила">×</button>
+</div>
+</td>
+<td class="px-1.5 py-2.5 align-middle">
+<div class="inline-flex items-center overflow-hidden rounded-md border border-ink/30 bg-paper">
+<button type="button" class="inline-flex items-center justify-center w-6 h-9 text-base rounded-l-md cursor-pointer hover:bg-ink hover:text-paper transition-colors duration-200" aria-label="Уменьшить количество: Колумбия Уила">−</button>
+<span class="w-5 text-center text-sm text-ink tnum">1</span>
+<button type="button" class="inline-flex items-center justify-center w-6 h-9 text-base rounded-r-md cursor-pointer hover:bg-ink hover:text-paper transition-colors duration-200" aria-label="Увеличить количество: Колумбия Уила">+</button>
+</div>
+</td>
+<td class="px-1.5 py-2.5 text-right align-middle whitespace-nowrap text-ink">29 BYN</td>
+</tr>
+<tr>
+<td class="px-1.5 py-2.5 align-middle">
+<div class="flex items-start justify-between gap-2">
+<span class="text-ink leading-snug">Дрип-пакеты, ассорти</span>
+<button type="button" class="shrink-0 inline-flex cursor-pointer items-center justify-center w-6 h-6 -mt-0.5 rounded-md text-espresso hover:bg-stamp hover:text-paper transition-colors duration-200" aria-label="Удалить: Дрип-пакеты, ассорти">×</button>
+</div>
+</td>
+<td class="px-1.5 py-2.5 align-middle">
+<div class="inline-flex items-center overflow-hidden rounded-md border border-ink/30 bg-paper">
+<button type="button" class="inline-flex items-center justify-center w-6 h-9 text-base rounded-l-md cursor-pointer hover:bg-ink hover:text-paper transition-colors duration-200" aria-label="Уменьшить количество: Дрип-пакеты, ассорти">−</button>
+<span class="w-5 text-center text-sm text-ink tnum">3</span>
+<button type="button" class="inline-flex items-center justify-center w-6 h-9 text-base rounded-r-md cursor-pointer hover:bg-ink hover:text-paper transition-colors duration-200" aria-label="Увеличить количество: Дрип-пакеты, ассорти">+</button>
+</div>
+</td>
+<td class="px-1.5 py-2.5 text-right align-middle whitespace-nowrap text-ink">54 BYN</td>
+</tr>
+</tbody>
+<tfoot>
+<tr class="border-t-2 border-ink/30">
+<td class="px-1.5 py-3 font-semibold text-ink">Итого</td>
+<td class="px-1.5 py-3"></td>
+<td class="px-1.5 py-3 text-right font-semibold text-ink whitespace-nowrap">147 BYN</td>
+</tr>
+</tfoot>
+</table>
+</div>
+          </div>
+          <p class="mt-3 text-xs text-muted">
+            Максимум — четыре строки: по одной на каждый продукт. Дубль того же сорта увеличивает
+            количество в его строке (скрытое поле: <span class="font-mono text-xs">ethiopia:2,colombia:1,drip:3</span>).
+          </p>
+        </article>
+
+        <!-- Предел количества -->
+        <article class="bg-cream border border-ink/25 rounded-lg p-6">
+          <p class="font-mono text-xs text-espresso/80">предел количества · −/+ на границах</p>
+          <h3 class="mt-2 font-display text-lg font-semibold text-ink">Минимум 1, максимум 10</h3>
+          <div class="mt-4 max-w-[560px]">
+<div class="overflow-hidden rounded-md border border-ink/25 bg-paper">
+<table class="w-full text-sm tnum">
+<caption class="sr-only">Состояния кнопок количества</caption>
+<thead>
+<tr class="text-left text-[11px] uppercase tracking-[0.12em] text-muted">
+<th scope="col" class="font-bold px-1.5 py-2">Наименование</th>
+<th scope="col" class="font-bold px-1.5 py-2 text-center w-[1%] whitespace-nowrap">Кол-во</th>
+<th scope="col" class="font-bold px-1.5 py-2 text-right w-[1%] whitespace-nowrap">Сумма</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-ink/15">
+<tr>
+<td class="px-1.5 py-2.5 align-middle">
+<div class="flex items-start justify-between gap-2">
+<span class="text-ink leading-snug">Минимум — «−» выключена</span>
+<button type="button" class="shrink-0 inline-flex cursor-pointer items-center justify-center w-6 h-6 -mt-0.5 rounded-md text-espresso hover:bg-stamp hover:text-paper transition-colors duration-200" aria-label="Удалить: Минимум — «−» выключена">×</button>
+</div>
+</td>
+<td class="px-1.5 py-2.5 align-middle">
+<div class="inline-flex items-center overflow-hidden rounded-md border border-ink/30 bg-paper">
+<button type="button" disabled class="inline-flex items-center justify-center w-6 h-9 text-base rounded-l-md opacity-40 cursor-not-allowed" aria-label="Уменьшить количество: Минимум — «−» выключена">−</button>
+<span class="w-5 text-center text-sm text-ink tnum">1</span>
+<button type="button" class="inline-flex items-center justify-center w-6 h-9 text-base rounded-r-md cursor-pointer hover:bg-ink hover:text-paper transition-colors duration-200" aria-label="Увеличить количество: Минимум — «−» выключена">+</button>
+</div>
+</td>
+<td class="px-1.5 py-2.5 text-right align-middle whitespace-nowrap text-ink">32 BYN</td>
+</tr>
+<tr>
+<td class="px-1.5 py-2.5 align-middle">
+<div class="flex items-start justify-between gap-2">
+<span class="text-ink leading-snug">Максимум — «+» выключен</span>
+<button type="button" class="shrink-0 inline-flex cursor-pointer items-center justify-center w-6 h-6 -mt-0.5 rounded-md text-espresso hover:bg-stamp hover:text-paper transition-colors duration-200" aria-label="Удалить: Максимум — «+» выключен">×</button>
+</div>
+</td>
+<td class="px-1.5 py-2.5 align-middle">
+<div class="inline-flex items-center overflow-hidden rounded-md border border-ink/30 bg-paper">
+<button type="button" class="inline-flex items-center justify-center w-6 h-9 text-base rounded-l-md cursor-pointer hover:bg-ink hover:text-paper transition-colors duration-200" aria-label="Уменьшить количество: Максимум — «+» выключен">−</button>
+<span class="w-5 text-center text-sm text-ink tnum">10</span>
+<button type="button" disabled class="inline-flex items-center justify-center w-6 h-9 text-base rounded-r-md opacity-40 cursor-not-allowed" aria-label="Увеличить количество: Максимум — «+» выключен">+</button>
+</div>
+</td>
+<td class="px-1.5 py-2.5 text-right align-middle whitespace-nowrap text-ink">320 BYN</td>
+</tr>
+</tbody>
+<tfoot>
+<tr class="border-t-2 border-ink/30">
+<td class="px-1.5 py-3 font-semibold text-ink">Итого</td>
+<td class="px-1.5 py-3"></td>
+<td class="px-1.5 py-3 text-right font-semibold text-ink whitespace-nowrap">352 BYN</td>
+</tr>
+</tfoot>
+</table>
+</div>
+          </div>
+          <p class="mt-3 text-xs text-muted">
+            На границах кнопки получают <span class="font-mono text-xs">disabled</span> —
+            это <span class="font-mono text-xs">opacity-40 · cursor-not-allowed</span>.
+          </p>
+        </article>
+
+        <!-- Мобильная ширина -->
+        <article class="bg-cream border border-ink/25 rounded-lg p-6">
+          <p class="font-mono text-xs text-espresso/80">мобильная ширина · 320px без горизонтального скролла</p>
+          <h3 class="mt-2 font-display text-lg font-semibold text-ink">Таблица на телефоне</h3>
+          <div class="mt-4 w-[320px] max-w-full rounded-md border border-dashed border-ink/30 p-2">
+<div class="overflow-hidden rounded-md border border-ink/25 bg-paper">
+<table class="w-full text-sm tnum">
+<caption class="sr-only">Состав заказа на узком экране</caption>
+<thead>
+<tr class="text-left text-[11px] uppercase tracking-[0.12em] text-muted">
+<th scope="col" class="font-bold px-1.5 py-2">Наименование</th>
+<th scope="col" class="font-bold px-1.5 py-2 text-center w-[1%] whitespace-nowrap">Кол-во</th>
+<th scope="col" class="font-bold px-1.5 py-2 text-right w-[1%] whitespace-nowrap">Сумма</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-ink/15">
+<tr>
+<td class="px-1.5 py-2.5 align-middle">
+<div class="flex items-start justify-between gap-2">
+<span class="text-ink leading-snug">Эфиопия Иргачеффе</span>
+<button type="button" class="shrink-0 inline-flex cursor-pointer items-center justify-center w-6 h-6 -mt-0.5 rounded-md text-espresso hover:bg-stamp hover:text-paper transition-colors duration-200" aria-label="Удалить: Эфиопия Иргачеффе">×</button>
+</div>
+</td>
+<td class="px-1.5 py-2.5 align-middle">
+<div class="inline-flex items-center overflow-hidden rounded-md border border-ink/30 bg-paper">
+<button type="button" class="inline-flex items-center justify-center w-6 h-9 text-base rounded-l-md cursor-pointer hover:bg-ink hover:text-paper transition-colors duration-200" aria-label="Уменьшить количество: Эфиопия Иргачеффе">−</button>
+<span class="w-5 text-center text-sm text-ink tnum">2</span>
+<button type="button" class="inline-flex items-center justify-center w-6 h-9 text-base rounded-r-md cursor-pointer hover:bg-ink hover:text-paper transition-colors duration-200" aria-label="Увеличить количество: Эфиопия Иргачеффе">+</button>
+</div>
+</td>
+<td class="px-1.5 py-2.5 text-right align-middle whitespace-nowrap text-ink">64 BYN</td>
+</tr>
+</tbody>
+<tfoot>
+<tr class="border-t-2 border-ink/30">
+<td class="px-1.5 py-3 font-semibold text-ink">Итого</td>
+<td class="px-1.5 py-3"></td>
+<td class="px-1.5 py-3 text-right font-semibold text-ink whitespace-nowrap">64 BYN</td>
+</tr>
+</tfoot>
+</table>
+</div>
+          </div>
+          <p class="mt-3 text-xs text-muted">
+            Колонки «Кол-во» и «Сумма» сжаты до <span class="font-mono text-xs">w-[1%]</span> и не переносятся;
+            «Итого» выровнено вправо, поэтому название переносится по словам, а не выдавливает таблицу.
+          </p>
+        </article>
+
+      </div>
+    </section>
+
+    <!-- ─────────────────────────── ПОВТОРЯЕМЫЕ ЭЛЕМЕНТЫ ─────────────────────────── -->
+    <section id="blocks" class="mt-16 scroll-mt-20" aria-labelledby="blocks-title">
+      <div class="flex items-start gap-4">
+        <p class="font-display text-4xl lg:text-5xl section-num leading-none" aria-hidden="true">06</p>
+        <div>
+          <p class="text-[11px] font-bold uppercase tracking-[0.24em] text-espresso/80">Повторяемые элементы</p>
+          <h2 id="blocks-title" class="mt-2 font-display font-semibold text-ink text-2xl sm:text-3xl">Штамп, этикетка, номера</h2>
+        </div>
+      </div>
+
+      <div class="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Штамп -->
+        <article class="bg-cream border border-ink/25 rounded-lg p-6">
+          <p class="font-mono text-xs text-espresso/80">stamp-mark · border-2 · mask</p>
+          <h3 class="mt-2 font-display text-lg font-semibold text-ink">Штамп</h3>
+          <div class="mt-6 flex items-center justify-center">
+            <div class="stamp-mark select-none" aria-hidden="true">
+              <div class="flex flex-col items-center justify-center w-[120px] h-[120px] rounded-full border-2 border-stamp text-stamp">
+                <div class="flex flex-col items-center justify-center w-[108px] h-[108px] rounded-full border border-stamp tilt-l-s">
+                  <span class="text-[10px] font-bold uppercase tracking-[0.16em]">обжарено</span>
+                  <span class="font-display text-base font-bold leading-none my-1">в четверг</span>
+                  <span class="text-[10px] font-semibold uppercase tracking-[0.12em]">Кварта · Минск</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <p class="mt-6 text-xs text-muted leading-relaxed">
+            На лендинге штамп один — в hero, слева от текста. Поворот через <span class="font-mono text-xs">rotate()</span>,
+            полустёртость — маска из SVG-шума. Минимальный кегль внутри — 10px.
+          </p>
+        </article>
+
+        <!-- Этикетка партии -->
+        <article class="bg-cream border border-ink/25 rounded-lg p-6">
+          <p class="font-mono text-xs text-espresso/80">batch-label · grid · bg-cream</p>
+          <h3 class="mt-2 font-display text-lg font-semibold text-ink">Этикетка партии</h3>
+          <dl class="mt-5 grid grid-cols-2 gap-px bg-ink/20 border border-ink/25 rounded-md overflow-hidden">
+            <div class="bg-paper p-4">
+              <dt class="text-[11px] font-bold uppercase tracking-[0.18em] text-muted">Партия</dt>
+              <dd class="mt-1 font-display text-lg font-semibold text-ink tnum">№187</dd>
+            </div>
+            <div class="bg-paper p-4">
+              <dt class="text-[11px] font-bold uppercase tracking-[0.18em] text-muted">Вес</dt>
+              <dd class="mt-1 font-display text-lg font-semibold text-ink tnum">5 кг</dd>
+            </div>
+            <div class="bg-paper p-4">
+              <dt class="text-[11px] font-bold uppercase tracking-[0.18em] text-muted">Обжарка</dt>
+              <dd class="mt-1 font-display text-lg font-semibold text-ink">четверг</dd>
+            </div>
+            <div class="bg-paper p-4">
+              <dt class="text-[11px] font-bold uppercase tracking-[0.18em] text-muted">Развоз</dt>
+              <dd class="mt-1 font-display text-lg font-semibold text-ink">пятница</dd>
+            </div>
+          </dl>
+          <p class="mt-5 text-xs text-muted leading-relaxed">
+            Сетка на волосяных линиях <span class="font-mono text-xs">gap-px bg-ink/20</span>. Цифры табличные
+            (<span class="font-mono text-xs">tnum</span>).
+          </p>
+        </article>
+
+        <!-- Номера секций -->
+        <article class="bg-cream border border-ink/25 rounded-lg p-6">
+          <p class="font-mono text-xs text-espresso/80">section-num · text-stroke 2px</p>
+          <h3 class="mt-2 font-display text-lg font-semibold text-ink">Номера секций</h3>
+          <div class="mt-5 space-y-3">
+            <div class="flex items-center gap-4">
+              <span class="font-display text-5xl section-num leading-none" aria-hidden="true">01</span>
+              <span class="rule-dotted flex-1" aria-hidden="true"></span>
+              <span class="text-[11px] font-bold uppercase tracking-[0.2em] text-espresso/80">Ассортимент</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <span class="font-display text-5xl section-num leading-none" aria-hidden="true">02</span>
+              <span class="rule-dotted flex-1" aria-hidden="true"></span>
+              <span class="text-[11px] font-bold uppercase tracking-[0.2em] text-espresso/80">Заявка</span>
+            </div>
+            <div class="flex items-center gap-4">
+              <span class="font-display text-5xl section-num leading-none" aria-hidden="true">03</span>
+              <span class="rule-dotted flex-1" aria-hidden="true"></span>
+              <span class="text-[11px] font-bold uppercase tracking-[0.2em] text-espresso/80">Контакты</span>
+            </div>
+          </div>
+          <p class="mt-5 text-xs text-muted leading-relaxed">
+            На лендинге нумерация: 01 ассортимент, 02 заявка, 03 контакты.
+            Контур 2px, цифры всегда <span class="font-mono text-xs">aria-hidden</span> — это декор.
+          </p>
+        </article>
+
+      </div>
+
+      <!-- Скругления и линии -->
+      <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <article class="bg-cream border border-ink/25 rounded-lg p-6">
+          <p class="font-mono text-xs text-espresso/80">--radius-sm 6 · md 10 · lg 16</p>
+          <h3 class="mt-2 font-display text-lg font-semibold text-ink">Скругления и линии</h3>
+          <div class="mt-5 flex items-end gap-4">
+            <div class="w-14 h-14 bg-paper border border-ink/30 rounded-none"></div>
+            <div class="w-14 h-14 bg-paper border border-ink/30 rounded-sm"></div>
+            <div class="w-14 h-14 bg-paper border border-ink/30 rounded-md"></div>
+            <div class="w-14 h-14 bg-paper border border-ink/30 rounded-lg"></div>
+          </div>
+          <p class="mt-2 text-[11px] text-muted">none · sm · md · lg</p>
+          <div class="mt-4 space-y-3">
+            <div class="border-t border-ink/25"></div>
+            <div class="rule-dotted"></div>
+            <div class="border-t-2 border-stamp w-16"></div>
+          </div>
+        </article>
+
+        <article class="bg-espresso text-paper rounded-lg p-6 lg:col-span-2">
+          <p class="font-mono text-xs text-paper/70">deep block · bg-espresso</p>
+          <h3 class="mt-2 font-display text-lg font-semibold text-paper">Глубокий блок, подпись и перфорация</h3>
+          <div class="relative mt-5 bg-paper text-ink rounded-lg border border-ink/25 p-5">
+            <div class="perforated absolute left-0 top-3 bottom-3 w-3" aria-hidden="true"></div>
+            <p class="text-[11px] font-bold uppercase tracking-[0.22em] text-espresso/80">Подписка «Кварта»</p>
+            <div class="mt-3 flex items-end gap-2 tnum">
+              <span class="font-display font-bold text-ink leading-none text-5xl">54</span>
+              <span class="pb-1 font-display text-xl font-semibold text-espresso">BYN</span>
+              <span class="pb-1 text-sm text-espresso/80">/ мес</span>
+            </div>
+            <p class="mt-3 text-sm text-espresso leading-relaxed">2 пачки по 250 г раз в месяц, доставка бесплатно.</p>
+          </div>
+          <p class="mt-4 text-xs text-paper/70 leading-relaxed max-w-[70ch]">
+            Тёмный espresso держит контраст <span class="font-mono text-xs">11.51:1</span> — так сделаны шапка
+            и блок подписки.
+          </p>
+        </article>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<footer class="paper-grain bg-espresso text-paper">
+  <div class="relative z-10 mx-auto max-w-[1180px] px-4 sm:px-6 lg:px-10 py-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <p class="font-display text-xl font-bold tracking-[0.14em]">КВАРТА · дизайн-система</p>
+    <p class="text-xs text-paper/60">Направление «Печатный цех обжарки». Токены совпадают с <span class="font-mono">index.html</span>.</p>
+  </div>
+</footer>
+
+</body>
+</html>
