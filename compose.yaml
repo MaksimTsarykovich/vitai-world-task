@@ -14,7 +14,8 @@ services:
       - "3000:3000"
     environment:
       NODE_ENV: production
-      DATABASE_PATH: /data/kvarta.db
+      DATABASE_URL: ${DATABASE_URL:-file:/data/kvarta.db}
+      DATABASE_AUTH_TOKEN: ${DATABASE_AUTH_TOKEN:-}
       PORT: "3000"
       HOSTNAME: 0.0.0.0
       SITE_URL: ${SITE_URL:-http://localhost:3000}

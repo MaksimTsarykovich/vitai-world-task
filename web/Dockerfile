@@ -1,11 +1,8 @@
 # syntax=docker/dockerfile:1
 
-# --- зависимости (тут же toolchain для сборки нативного better-sqlite3) ---
+# --- зависимости (libSQL ставится готовым бинарником, toolchain не нужен) ---
 FROM node:24-bookworm-slim AS deps
 WORKDIR /app
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 make g++ \
-    && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 RUN npm ci
 
@@ -29,7 +26,7 @@ ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3000 \
     HOSTNAME=0.0.0.0 \
-    DATABASE_PATH=/data/kvarta.db
+    DATABASE_URL=file:/data/kvarta.db
 
 RUN groupadd --system --gid 1001 nodejs \
     && useradd --system --uid 1001 --gid nodejs nextjs
@@ -39,6 +36,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 # скрипты менеджера доступны через `docker compose exec web node scripts/...`
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
+# общая схема/миграция нужна скриптам (scripts/migrate.mjs импортирует ../lib/schema.mjs)
+COPY --from=builder --chown=nextjs:nodejs /app/lib/schema.mjs ./lib/schema.mjs
 
 RUN mkdir -p /data && chown -R nextjs:nodejs /data
 
