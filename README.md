@@ -15,11 +15,11 @@
 |---|---|
 | Приложение | Next.js 16 (App Router, React 19) + TypeScript strict |
 | Стили | Tailwind CSS 4 + собственные design tokens |
-| Данные | SQLite (`better-sqlite3`) в Docker volume |
+| Данные | SQLite-совместимая база через `@libsql/client`: файл в томе (VPS) или Turso по сети (Vercel) |
 | Валидация | Zod — одна схема для клиента и сервера |
 | Тесты | Vitest |
 | Запуск | Docker multi-stage (`output: 'standalone'`) + Docker Compose |
-| Прод | VPS + Caddy (TLS), инструкция в разделе «Деплой на VPS» |
+| Прод | два пути из одного кода: VPS + Caddy (Docker/SQLite) и Vercel + Turso — [`docs/DEPLOY-VERCEL.md`](docs/DEPLOY-VERCEL.md) |
 
 ## Структура
 
@@ -108,7 +108,7 @@ docker compose down         # данные остаются в томе kvarta-d
 ```bash
 cd web
 npm ci
-DATABASE_PATH=./data/kvarta.db npm run dev
+DATABASE_URL=file:./data/kvarta.db npm run dev
 ```
 
 Проверки:
@@ -185,11 +185,12 @@ CSV-колонки: `id`, `created_at`, `name`, `phone`, `interest`, `order_item
 
 | Переменная | Обязательна | Назначение |
 |---|---|---|
-| `DATABASE_PATH` | да (есть значение по умолчанию) | файл SQLite: локально `./data/kvarta.db`, в Docker `/data/kvarta.db` |
+| `DATABASE_URL` | да (есть значение по умолчанию) | база: локально и в Docker — `file:./data/kvarta.db` / `file:/data/kvarta.db`, на Vercel — `libsql://…turso.io` |
+| `DATABASE_AUTH_TOKEN` | для Turso | токен доступа к базе; для локального файла не нужен |
 | `SITE_URL` | на деплое | публичный адрес: canonical, OG, sitemap |
 | `PORT` | нет | порт приложения, по умолчанию 3000 |
 | `LEAD_RATE_LIMIT` | нет | лимит `POST /api/lead` с одного IP в минуту, по умолчанию 20 |
-| `TRUST_PROXY` | нет | `1` — брать IP из `X-Forwarded-For` за Caddy, по умолчанию `0` |
+| `TRUST_PROXY` | нет | `1` — брать IP из `X-Forwarded-For` за Caddy или Vercel, по умолчанию `0` |
 | `TELEGRAM_BOT_TOKEN` | нет | токен бота для дубля заявки в Telegram; без пары с `TELEGRAM_CHAT_ID` выключено |
 | `TELEGRAM_CHAT_ID` | нет | id чата/канала для дубля заявки; включается только вместе с токеном |
 
@@ -308,11 +309,11 @@ Bot API не влияет на время ответа. Ошибка отпра�
 
 ## Качество и проверки
 
-- **Lighthouse mobile** (прод-сборка в контейнере, симуляция slow 4G):
-  performance **93**, accessibility **100**, best-practices **77**, SEO **100**;
-  LCP 2.0 с, CLS 0, TBT 280 мс, вес страницы 4.8 МБ. Отчёты —
-  `artifacts/lighthouse/mobile.report.json` и `mobile.report.html`, разбор метрик —
-  в [`artifacts/submission/CHECKLIST.md`](artifacts/submission/CHECKLIST.md).
+- **Lighthouse mobile** (прод-сборка, симуляция slow 4G):
+  performance **93–95**, accessibility **100**, best-practices **77**, SEO **100**;
+  LCP 2.8–3.1 с (в симуляции), CLS 0, TBT 60–80 мс, вес страницы 4.8 МБ. Отчёты —
+  `artifacts/lighthouse/mobile.report.json` и `mobile.report.html`, разбор метрик и
+  отклонений — в [`artifacts/submission/CHECKLIST.md`](artifacts/submission/CHECKLIST.md).
 - **Карта встроена всегда**: в контактах сразу рендерится `<iframe>` Яндекс.Карты
   (`loading="lazy"`, фиксированная высота) плюс ссылка «Открыть в Яндекс.Картах».
   Побочная цена — около 4.5 МБ тайлов и сторонние cookie Яндекса: это снимает
