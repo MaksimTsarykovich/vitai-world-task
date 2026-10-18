@@ -37,7 +37,8 @@ export default function Assortment() {
                 alt={product.alt}
                 width={600}
                 height={450}
-                sizes="(min-width: 1024px) 23vw, (min-width: 640px) 45vw, 100vw"
+                quality={70}
+                sizes="(min-width: 1024px) 23vw, (min-width: 640px) 45vw, calc(100vw - 2rem)"
                 className="w-full h-auto object-cover aspect-[4/3]"
               />
 

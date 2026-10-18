@@ -1,4 +1,5 @@
 import Container from '@/components/ui/Container';
+import MapEmbed from '@/components/ui/MapEmbed';
 import SectionLabel from '@/components/ui/SectionLabel';
 import { site } from '@/lib/site';
 
@@ -29,12 +30,10 @@ export default function Kontakty() {
 
         <div className="mt-8 lg:mt-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
           <div className="lg:col-span-7">
-            <iframe
+            <MapEmbed
               src={mapEmbedSrc}
-              className="w-full h-[300px] sm:h-[420px] rounded-lg border border-ink/25 bg-paper"
-              loading="lazy"
               title="Яндекс.Карта: Минск, улица Короля, 9"
-              referrerPolicy="no-referrer-when-downgrade"
+              address={site.address}
             />
 
             <a

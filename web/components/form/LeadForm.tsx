@@ -9,7 +9,6 @@ import { cn } from '@/lib/cn';
 import { MAX_QUANTITY, findProduct, products } from '@/lib/products';
 import { onOrderIntent } from '@/lib/order-intent';
 import { submitLead, type LeadInterest, type LeadPayload } from '@/lib/lead-client';
-import { formatLeadFieldErrors, leadRequestSchema } from '@/lib/lead-schema';
 import { site, subscriptionLabel } from '@/lib/site';
 
 type Interest = '' | LeadInterest;
@@ -219,6 +218,10 @@ export default function LeadForm() {
       orderItems.push({ slug: sortSlug, qty: 1 });
     }
 
+    // Zod-схема общая с сервером (M3), но нужна только при отправке: грузим её
+    // лениво, чтобы не тащить zod в начальный клиентский бандл.
+    const { formatLeadFieldErrors, leadRequestSchema } = await import('@/lib/lead-schema');
+
     const parsed = leadRequestSchema.safeParse({
       name,
       phone,
@@ -227,7 +230,6 @@ export default function LeadForm() {
       subscription: isOrder ? subscription : false,
       items: isOrder ? orderItems : [],
     });
-
     setStatus(null);
 
     if (!parsed.success) {

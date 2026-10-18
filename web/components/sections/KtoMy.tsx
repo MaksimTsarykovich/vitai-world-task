@@ -4,7 +4,7 @@
  */
 export default function KtoMy() {
   return (
-    <div className="reveal mt-5 max-w-[46ch] space-y-3 text-espresso text-base sm:text-lg leading-relaxed">
+    <div className="mt-5 max-w-[46ch] space-y-3 text-espresso text-base sm:text-lg leading-relaxed">
       <p>Мы маленькая мастерская в Минске: обжариваем кофе с 2019 года.</p>
       <p>Нас двое — Аня и Дмитрий, оба раньше работали бариста.</p>
       <p>
