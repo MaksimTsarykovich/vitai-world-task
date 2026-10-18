@@ -48,6 +48,11 @@ Next.js, API заявки с дедупликацией и атрибуцией,
 
 ## Файлы
 
+- `hermes/orchestrator-session.md` — **полный транскрипт сессии Hermes Agent**, где
+  человек ставил задачи, а агент-оркестратор писал спецификацию, ставил задачи
+  OpenCode, проверял результаты и вёл git: 680 сообщений, 58 вызовов инструментов,
+  модель `deepseek-v4.1-flash`. Это главный источник, если нужно понять, как
+  распределялась работа между человеком и ИИ.
 - `opencode/design.json` — сессия дизайна (пять проходов правок).
 - `opencode/m2-port.json` — сессия переноса макета в Next.js.
 - `opencode/m3-api.json` — сессия API заявки.
@@ -55,8 +60,26 @@ Next.js, API заявки с дедупликацией и атрибуцией,
 - `2026-10-17-design-agent.md` — human-readable лог дизайна: промпт, прогоны, что
   агент заявил сам и что проверили отдельно.
 
-Экспорт — `opencode session export --sanitize <session>`, поэтому токены и ключи в
-транскриптах вырезаны. Смотреть локально:
+### Как читать транскрипт Hermes
+
+Файл — диалог подряд, без причёсывания: постановки задач, правки заказчика,
+команды проверок, коммиты. Полезные точки входа:
+
+```bash
+grep -n "правк" artifacts/ai-log/hermes/orchestrator-session.md   # правки заказчика
+grep -n "npm test\|Lighthouse" artifacts/ai-log/hermes/orchestrator-session.md
+grep -n "commit" artifacts/ai-log/hermes/orchestrator-session.md | head -20
+```
+
+### Обезличивание
+
+`opencode`-сессии выгружены через `opencode session export --sanitize <session>`.
+Транскрипт Hermes обезличен отдельно: вырезаны id и юзернеймы бота и канала
+Telegram, значения переменных окружения и всё, что похоже на API-ключи и токены;
+телефоны в транскрипте вымышленные (тестовые данные макетов). Рабочие пути и URL
+публичного репозитория оставлены — без них теряется контекст сборки.
+
+Смотреть `opencode`-сессии локально:
 
 ```bash
 jq -r '.messages[]?.parts[]? | select(.type=="text") | .text' artifacts/ai-log/opencode/m3-api.json | head -40
