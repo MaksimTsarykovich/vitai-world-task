@@ -11,14 +11,32 @@
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { createClient } from '@libsql/client';
-import { SCHEMA_VERSION, applyMigrations, readSchemaVersion } from '../lib/schema.mjs';
+import {
+  SCHEMA_VERSION,
+  applyMigrations,
+  normalizeDatabaseUrl,
+  readSchemaVersion,
+} from '../lib/schema.mjs';
 
-const url = process.env.DATABASE_URL;
+const resolved = normalizeDatabaseUrl(process.env.DATABASE_URL);
 
-if (!url) {
-  console.error('✖ Не задан DATABASE_URL (file:./data/kvarta.db или libsql://…)');
-  process.exit(1);
+if (resolved.kind === 'missing') {
+  console.warn(
+    '⚠ DATABASE_URL не задан — миграция пропущена, схема применится при первом запросе ' +
+      '(на Vercel проверьте переменные окружения проекта)',
+  );
+  process.exit(0);
 }
+
+if (resolved.normalized) {
+  console.warn(
+    `⚠ DATABASE_URL="${process.env.DATABASE_URL}" задан без схемы — нужен вид ` +
+      '"file:/путь" или "libsql://хост". Миграция пропущена, схема применится при первом запросе.',
+  );
+  process.exit(0);
+}
+
+const url = resolved.url;
 
 if (url.startsWith('file:')) {
   const path = url.slice('file:'.length).split('?')[0];
@@ -38,6 +56,7 @@ try {
     process.exitCode = 1;
   }
 } catch (error) {
+  // Реальные ошибки подключения (неверный токен, недоступный хост) не скрываем.
   console.error(
     `✖ Миграция не удалась: ${error instanceof Error ? error.message : 'unknown'}`,
   );

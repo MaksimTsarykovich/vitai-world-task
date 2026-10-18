@@ -15,6 +15,7 @@ import { execFileSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createClient } from '@libsql/client';
+import { normalizeDatabaseUrl } from '../lib/schema.mjs';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const baseUrl = process.env.SMOKE_BASE_URL ?? process.env.BASE_URL ?? 'http://localhost:3000';
@@ -76,8 +77,18 @@ function dockerRow() {
 
 /** Локальный фолбэк, если Docker недоступен. */
 async function localRow() {
-  const url = process.env.DATABASE_URL ?? `file:${resolve(repoRoot, 'web', 'data', 'kvarta.db')}`;
-  const db = createClient({ url, authToken: process.env.DATABASE_AUTH_TOKEN || undefined });
+  const resolved = normalizeDatabaseUrl(process.env.DATABASE_URL);
+
+  if (resolved.kind === 'missing') {
+    throw new Error(
+      'DATABASE_URL не задан — укажите "file:/путь" или "libsql://хост" (+ DATABASE_AUTH_TOKEN)',
+    );
+  }
+
+  const db = createClient({
+    url: resolved.url,
+    authToken: process.env.DATABASE_AUTH_TOKEN || undefined,
+  });
 
   try {
     const res = await db.execute({ sql: SELECT_ROW, args: [phone] });
@@ -90,15 +101,21 @@ async function localRow() {
 }
 
 async function countRows() {
+  const problems = [];
+
   try {
     return dockerRow();
-  } catch (dockerError) {
-    try {
-      return await localRow();
-    } catch {
-      throw dockerError;
-    }
+  } catch (error) {
+    problems.push(`через Docker: ${error instanceof Error ? error.message : 'unknown'}`);
   }
+
+  try {
+    return await localRow();
+  } catch (error) {
+    problems.push(`локально: ${error instanceof Error ? error.message : 'unknown'}`);
+  }
+
+  fail(`не удалось проверить заявку в базе — ${problems.join('; ')}`);
 }
 
 console.log(`→ ${baseUrl}/api/lead · ${prettyPhone} · 10 параллельных запросов`);

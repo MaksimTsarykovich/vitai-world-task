@@ -17,7 +17,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { createClient } from '@libsql/client';
-import { readSchemaVersion } from '../lib/schema.mjs';
+import { readSchemaVersion, normalizeDatabaseUrl } from '../lib/schema.mjs';
 
 const USAGE = `Резервная копия базы.
 
@@ -127,7 +127,19 @@ async function logicalDump(db) {
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
-  const url = process.env.DATABASE_URL || 'file:/data/kvarta.db';
+  const resolved = normalizeDatabaseUrl(process.env.DATABASE_URL);
+
+  if (resolved.kind === 'missing') {
+    fail(
+      'DATABASE_URL не задан — укажите "file:/путь" или "libsql://хост" (+ DATABASE_AUTH_TOKEN)',
+    );
+  }
+
+  if (resolved.normalized) {
+    console.error(`⚠ DATABASE_URL без схемы — использую "${resolved.url}"`);
+  }
+
+  const url = resolved.url;
   const useDump = options.dump || !url.startsWith('file:');
   const extension = useDump ? 'sql' : 'db';
   const destination = resolve(

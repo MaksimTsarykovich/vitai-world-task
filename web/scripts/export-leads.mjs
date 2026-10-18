@@ -13,6 +13,7 @@
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createClient } from '@libsql/client';
+import { normalizeDatabaseUrl } from '../lib/schema.mjs';
 
 const COLUMNS = [
   'id',
@@ -45,7 +46,7 @@ const USAGE = `Выгрузка заявок из базы.
   --out <путь>        записать в файл вместо stdout
   -h, --help          эта справка
 
-База: DATABASE_URL (по умолчанию file:/data/kvarta.db).`;
+База: DATABASE_URL (file:… локально или libsql://… для Turso).`;
 
 function fail(message) {
   console.error(`✖ ${message}`);
@@ -122,8 +123,22 @@ function toJson(rows) {
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
-  const url = process.env.DATABASE_URL || 'file:/data/kvarta.db';
-  const db = createClient({ url, authToken: process.env.DATABASE_AUTH_TOKEN || undefined });
+  const resolved = normalizeDatabaseUrl(process.env.DATABASE_URL);
+
+  if (resolved.kind === 'missing') {
+    fail(
+      'DATABASE_URL не задан — укажите "file:/путь" или "libsql://хост" (+ DATABASE_AUTH_TOKEN)',
+    );
+  }
+
+  if (resolved.normalized) {
+    console.error(`⚠ DATABASE_URL без схемы — использую "${resolved.url}"`);
+  }
+
+  const db = createClient({
+    url: resolved.url,
+    authToken: process.env.DATABASE_AUTH_TOKEN || undefined,
+  });
 
   let rows;
 

@@ -65,6 +65,26 @@ export const LEAD_COLUMNS_V2 = [
 ];
 
 /**
+ * Приводит DATABASE_URL к валидному для libSQL виду, чтобы не падать с
+ * URL_INVALID на «путь без схемы»:
+ *  - пусто/undefined            → { kind: 'missing' };
+ *  - путь без схемы (./data/x,  → { kind: 'url', url: 'file:./data/x', normalized: true };
+ *    /data/x)
+ *  - file:/libsql:/http(s):/ws: → как есть.
+ */
+export function normalizeDatabaseUrl(value) {
+  const raw = typeof value === 'string' ? value.trim() : '';
+
+  if (raw === '') return { kind: 'missing' };
+
+  if (/^(file|libsql|https?|wss?):/i.test(raw)) {
+    return { kind: 'url', url: raw, normalized: false };
+  }
+
+  return { kind: 'url', url: `file:${raw}`, normalized: true };
+}
+
+/**
  * Версия схемы из таблицы schema_migrations. Свежая или старая база без этой
  * таблицы — 0 (не падаем).
  */
