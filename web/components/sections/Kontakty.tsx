@@ -30,11 +30,7 @@ export default function Kontakty() {
 
         <div className="mt-8 lg:mt-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
           <div className="lg:col-span-7">
-            <MapEmbed
-              src={mapEmbedSrc}
-              title="Яндекс.Карта: Минск, улица Короля, 9"
-              address={site.address}
-            />
+            <MapEmbed src={mapEmbedSrc} title="Яндекс.Карта: Минск, улица Короля, 9" />
 
             <a
               href={mapLink}
